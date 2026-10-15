@@ -725,7 +725,7 @@ fn key_detail(app: &mut FilmcraftApp, ui: &mut egui::Ui, height: f32, t: &Tokens
             ui.painter().rect_filled(r, 0.0, if i % 2 == 0 { t.app_bg } else { t.row_alt });
             let keys = b["keys"].as_str().unwrap_or("");
             let mods = Chord::parse(keys).map(|c| {
-                let k = Chord { mods: c.mods, key: c.key };
+                let k = Chord { mods: c.mods, key: c.key, physical: c.physical };
                 let d = k.display(plat);
                 let legend = key_legend(c.key, plat.is_mac());
                 let m = d.trim_end_matches(&legend).trim_end_matches(c.key).trim_end_matches('+').to_string();

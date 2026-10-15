@@ -60,7 +60,8 @@ pub const DEFAULT_PRESET: &str = "FilmCraft Default";
 pub const PREMIERE_PRESET: &str = "Premiere Pro Compatible";
 pub const FCP_PRESET: &str = "Final Cut Pro Compatible";
 pub const AVID_PRESET: &str = "Avid Media Composer Compatible";
-pub const BUILTIN_PRESETS: [&str; 4] = [DEFAULT_PRESET, PREMIERE_PRESET, FCP_PRESET, AVID_PRESET];
+pub const ELIAS_PRESET: &str = "Elias Premiere (AZERTY)";
+pub const BUILTIN_PRESETS: [&str; 5] = [DEFAULT_PRESET, PREMIERE_PRESET, FCP_PRESET, AVID_PRESET, ELIAS_PRESET];
 
 const FILE_FORMAT: &str = "filmcraft-keyboard-shortcuts";
 const DIR_NAME: &str = "Keyboard Shortcuts";
@@ -132,6 +133,8 @@ pub const KEYS: &[&str] = &[
     ".",
     "/", //
     "Space",
+    "IntlBackslash",
+    ":",
     "Insert",
     "Delete",
     "Home",
@@ -202,6 +205,7 @@ impl Mods {
 /// A key plus modifiers.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Chord {
+    pub physical: bool,
     pub mods: Mods,
     pub key: &'static str,
 }
@@ -265,12 +269,14 @@ impl Chord {
         }
         let text = text.replace("++", "+").trim_end_matches('+').to_string();
         let mut mods = Mods::default();
+        let mut physical = false;
         let mut key = None;
         let parts: Vec<&str> = text.split('+').map(str::trim).filter(|p| !p.is_empty()).collect();
         for (i, p) in parts.iter().enumerate() {
             let low = p.to_ascii_lowercase();
             let is_last = i + 1 == parts.len();
             match low.as_str() {
+                "physical" => physical = true,
                 "cmd" | "command" | "super" => mods.cmd = true,
                 "meta" | "win" | "windows" if !platform.is_mac() => mods.ctrl = true,
                 "meta" => mods.cmd = true,
@@ -288,11 +294,11 @@ impl Chord {
             }
         }
         let key = key.ok_or_else(|| format!("`{s}` has no key"))?;
-        Ok(Chord { mods, key })
+        Ok(Chord { mods, key, physical })
     }
 
     pub fn canonical(&self) -> String {
-        format!("{}{}", self.mods.prefix(), self.key)
+        format!("{}{}{}", if self.physical { "Physical+" } else { "" }, self.mods.prefix(), self.key)
     }
 
     /// The chord as this OS sees it: off macOS the Control key is the primary modifier, so `Ctrl`
@@ -620,9 +626,14 @@ impl Shortcuts {
             PREMIERE_PRESET => presets::premiere(),
             FCP_PRESET => presets::FINAL_CUT.to_vec(),
             AVID_PRESET => presets::AVID.to_vec(),
+            ELIAS_PRESET => presets::ELIAS.to_vec(),
             _ => return None,
         };
         self.apply_table(&mut b, &table);
+        if name == ELIAS_PRESET && !p.is_mac() {
+            // Elias uses Control+W for Undo on macOS; keep it rather than Command+W (Close).
+            b.retain(|binding| matches!(binding.command.as_str(), "edit.undo" | "edit.redo") || !binding.chord().is_some_and(|c| c.key == "W" && c.mods.cmd));
+        }
         drop_control_collisions(&mut b, p);
         Some(b)
     }

@@ -308,3 +308,21 @@ fn default_keymaps_have_no_conflicts_on_any_platform() {
         assert!(mac.iter().any(|b| b.command == cmd && b.keys == keys), "{cmd} {keys} on macOS");
     }
 }
+
+#[test]
+fn elias_preset_preserves_azerty_positions_and_windows_undo() {
+    use crate::shortcuts::{Chord, ELIAS_PRESET, Platform, Shortcuts};
+    for platform in [Platform::Mac, Platform::Windows] {
+        let bindings = Shortcuts::new().builtin_for(ELIAS_PRESET, platform).unwrap();
+        assert!(bindings.iter().any(|b| b.command == "clip.nest" && b.keys == "N"));
+        assert!(bindings.iter().any(|b| b.command == "edit.undo" && b.keys == "Ctrl+W"));
+        assert!(bindings.iter().any(|b| b.command == "edit.redo" && b.keys == "Ctrl+Shift+W"));
+        for b in bindings {
+            assert!(Chord::parse(&b.keys).is_ok(), "{}", b.keys);
+        }
+    }
+    let chord = Chord::parse("Physical+Cmd+Shift+2").unwrap();
+    assert!(chord.physical);
+    assert_eq!(chord.canonical(), "Physical+Cmd+Shift+2");
+    assert!(chord.effective(Platform::Windows).physical);
+}

@@ -312,3 +312,27 @@ fn shift_alt_click_toggles_only_the_clicked_linked_side() {
         assert_eq!(*d.app().session.project, *before, "selection does not edit the document");
     }
 }
+
+#[test]
+fn elias_azerty_zoom_uses_physical_keys_and_fit_works_from_timeline() {
+    let mut d = Driver::new();
+    d.exec("shortcuts.loadPreset", json!({"name": filmcraft_engine::shortcuts::ELIAS_PRESET}));
+    d.focus("Timeline");
+    d.harness.state_mut().ui.timeline.pps = 100.0;
+    d.harness.state_mut().ui.timeline.target_pps = 100.0;
+    for (physical, expected) in [(egui::Key::Equals, 160.0), (egui::Key::Minus, 100.0)] {
+        for pressed in [true, false] {
+            d.harness.event(egui::Event::Key { key: egui::Key::Minus, physical_key: Some(physical), pressed, repeat: false, modifiers: egui::Modifiers::NONE });
+            d.frames(2);
+        }
+        assert!(
+            (d.app().ui.timeline.target_pps - expected).abs() < 0.01,
+            "physical={physical:?}, pps={}, expected={expected}, bindings={:?}",
+            d.app().ui.timeline.target_pps,
+            d.app().session.shortcuts.for_command("view.zoomIn")
+        );
+    }
+    d.harness.state_mut().ui.program.zoom = Some(2.0);
+    d.key("Shift+F");
+    assert_eq!(d.app().ui.program.zoom, None);
+}

@@ -176,3 +176,5 @@ Ranked; detail and "done when" in [docs/roadmap.md](docs/roadmap.md) and [docs/g
 | 2026-10-05 | major | Honest assessment added: checklist ~87% vs ready for real work ~50–60% |
 
 - 2026-10-15 (fork): integrate PR #1694 Premiere project importer with synthetic regression coverage; real-project fidelity remains unverified.
+
+- 2026-10-15 (fork): Elias Premiere (AZERTY) keyboard preset for macOS and Windows, with physical-key support; see [shortcut mapping and limitations](docs/fork/elias-shortcuts.md).

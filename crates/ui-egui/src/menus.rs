@@ -806,6 +806,7 @@ pub fn parse_shortcut(s: &str) -> Option<(egui::Modifiers, egui::Key)> {
     let mac = cfg!(target_os = "macos");
     for p in parts {
         match p {
+            "Physical" => {}
             "Cmd" => m.command = true,
             "Shift" => m.shift = true,
             "Alt" => m.alt = true,
@@ -813,6 +814,7 @@ pub fn parse_shortcut(s: &str) -> Option<(egui::Modifiers, egui::Key)> {
             "Ctrl" => m.ctrl = true,
             k => {
                 key = match k {
+                    ":" => Some(egui::Key::Colon),
                     ";" => Some(egui::Key::Semicolon),
                     "'" => Some(egui::Key::Quote),
                     "," => Some(egui::Key::Comma),
@@ -831,16 +833,24 @@ pub fn parse_shortcut(s: &str) -> Option<(egui::Modifiers, egui::Key)> {
 }
 
 /// One active key binding for the input loop: (modifiers, key, command id, panel or None).
-pub type KeyBinding = (egui::Modifiers, egui::Key, String, Option<String>);
+pub type KeyBinding = (egui::Modifiers, egui::Key, String, Option<String>, bool);
 
 /// The active key bindings (from the engine's shortcut set), most specific first so Shift+I
 /// doesn't also fire I.
 pub fn bindings(app: &FilmcraftApp) -> Vec<KeyBinding> {
-    let mut v: Vec<KeyBinding> =
-        app.session.shortcuts.bindings.iter().filter_map(|b| parse_shortcut(&b.keys).map(|(m, k)| (m, k, b.command.clone(), b.panel.clone()))).collect();
+    let mut v: Vec<KeyBinding> = app
+        .session
+        .shortcuts
+        .bindings
+        .iter()
+        .filter_map(|b| parse_shortcut(&b.keys).map(|(m, k)| (m, k, b.command.clone(), b.panel.clone(), b.keys.starts_with("Physical+"))))
+        .collect();
     // With Shift held, a punctuation key arrives as its shifted glyph (Shift+; is `:` on US layouts).
-    let shifted: Vec<KeyBinding> =
-        v.iter().filter(|b| b.0.shift).filter_map(|(m, k, id, p)| shifted_key(*k).map(|k2| (*m, k2, id.clone(), p.clone()))).collect();
+    let shifted: Vec<KeyBinding> = v
+        .iter()
+        .filter(|b| b.0.shift && !b.4)
+        .filter_map(|(m, k, id, p, physical)| shifted_key(*k).map(|k2| (*m, k2, id.clone(), p.clone(), *physical)))
+        .collect();
     v.extend(shifted);
     v.sort_by_key(|(m, ..)| std::cmp::Reverse(specificity(*m)));
     v

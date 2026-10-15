@@ -1512,8 +1512,8 @@ impl FilmcraftApp {
             let panel = self.bindings.iter().filter(|b| b.3.as_deref() == Some(focused));
             let app_wide = self.bindings.iter().filter(|b| b.3.is_none());
             let mut candidates: Vec<&menus::KeyBinding> = panel.chain(app_wide).collect();
-            candidates.sort_by_key(|b| std::cmp::Reverse(menus::specificity(b.0)));
-            for (m, k, id, _) in candidates {
+            candidates.sort_by_key(|b| std::cmp::Reverse((menus::specificity(b.0), b.4)));
+            for (m, k, id, _, physical) in candidates {
                 // With a text field focused, an unmodified key belongs to the field (and to the input
                 // method composing in it), not to a tool shortcut: `J`, `Z`, `R`, `A`… are the keys
                 // Vietnamese Telex combines into diacritics (#243). Chords with a modifier stay:
@@ -1525,7 +1525,19 @@ impl FilmcraftApp {
                 if divider_focused && matches!(k, egui::Key::ArrowLeft | egui::Key::ArrowRight | egui::Key::ArrowUp | egui::Key::ArrowDown) {
                     continue;
                 }
-                if i.consume_key(*m, *k) {
+                let consumed = if *physical {
+                    let mut found = false;
+                    i.events.retain(|event| {
+                        let matches = matches!(event, egui::Event::Key { key, physical_key, pressed: true, modifiers, .. }
+                            if physical_key.unwrap_or(*key) == *k && modifiers.matches_exact(*m));
+                        found |= matches;
+                        !matches
+                    });
+                    found
+                } else {
+                    i.consume_key(*m, *k)
+                };
+                if consumed {
                     fire.push(id.clone());
                 }
             }
