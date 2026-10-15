@@ -4312,6 +4312,9 @@ fn name_project(p: &mut filmcraft_project::Project, name: String) {
 }
 
 fn write_project(s: &mut Session, path: &str, adopt: bool) -> Result<Value> {
+    if std::path::Path::new(path).extension().and_then(|e| e.to_str()).is_some_and(|e| e.eq_ignore_ascii_case("prproj")) {
+        return Err(EngineError::Other("Premiere projects are import-only; save to a .fcproj file instead".into()));
+    }
     let t0 = web_time::Instant::now();
     // Save As renames the project after its new file (not an edit: no undo step, not dirty).
     if adopt
@@ -4377,6 +4380,9 @@ fn install_project(s: &mut Session, proj: filmcraft_project::Project, path: Opti
 
 fn open_project(s: &mut Session, path: &str) -> Result<Value> {
     let bytes = s.services.read_file(path).map_err(|e| EngineError::Other(format!("{path}: {e}")))?;
+    if crate::interchange::detect(path, &bytes) == Some(filmcraft_interchange::Format::Prproj) {
+        return open_prproj(s, path, &bytes);
+    }
     let loaded = filmcraft_format::decode(&bytes).map_err(|e| EngineError::Other(format!("{path}: {e}")))?;
     let (from, migrated) = (loaded.schema_version, loaded.migrated());
     install_project(s, loaded.project, Some(path.to_string()), true);
@@ -4394,6 +4400,22 @@ fn open_project(s: &mut Session, path: &str) -> Result<Value> {
     }
     let missing = crate::relink::on_open(s);
     Ok(json!({"path": path, "schemaVersion": from, "migrated": migrated, "missingMedia": missing}))
+}
+
+fn open_prproj(s: &mut Session, path: &str, bytes: &[u8]) -> Result<Value> {
+    let name = std::path::Path::new(path).file_stem().map_or_else(|| "Untitled".into(), |n| n.to_string_lossy().into_owned());
+    // Import in isolation: a malformed foreign project must not discard the current document.
+    let mut imported = Session { services: s.services.clone(), ..Default::default() };
+    imported.project = std::sync::Arc::new(filmcraft_project::Project::new(&name));
+    let r = crate::interchange::import(&mut imported, path, bytes, filmcraft_interchange::Format::Prproj)?;
+    install_project(s, (*imported.project).clone(), None, false);
+    s.media = imported.media;
+    if let Some(seq) = s.state.active_sequence {
+        s.events.push(crate::Event::OpenSequence(seq));
+    }
+    s.note_recent(path);
+    crate::relink::on_open(s);
+    Ok(r)
 }
 
 /// Load a recovery candidate (newest when `id` is None) as the current, unsaved project.
