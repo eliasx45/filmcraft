@@ -3610,3 +3610,49 @@
 	Shows the version, community links and credits in a FilmCraft window.	Muestra la versión, los enlaces de la comunidad y los créditos en una ventana de FilmCraft.
 	Couldn't open your web browser	No se pudo abrir el navegador web
 	Open this address in your browser yourself:	Abre esta dirección tú mismo en el navegador:
+
+# Native EffectCraft composition links
+	EffectCraft	EffectCraft
+	EffectCraft Links	Vínculos de EffectCraft
+	Link EffectCraft Composition…	Vincular composición de EffectCraft…
+	Relink EffectCraft Composition…	Revincular composición de EffectCraft…
+	Replace with EffectCraft Composition…	Reemplazar por una composición de EffectCraft…
+	Bake EffectCraft Composition	Prerenderizar composición de EffectCraft
+	Restore EffectCraft Link	Restaurar vínculo de EffectCraft
+	Refresh EffectCraft Links	Actualizar vínculos de EffectCraft
+	Cancel EffectCraft Updates	Cancelar actualizaciones de EffectCraft
+	Composition Link Status	Estado del vínculo de composición
+	EffectCraft renderer executable	Ejecutable del renderizador de EffectCraft
+	Configure EffectCraft Renderer	Configurar renderizador de EffectCraft
+	Relink EffectCraft Composition	Revincular composición de EffectCraft
+	Link EffectCraft Composition	Vincular composición de EffectCraft
+	Choose a saved EffectCraft project. FilmCraft updates its picture after each save.	Elige un proyecto guardado de EffectCraft. FilmCraft actualiza su imagen cada vez que lo guardas.
+	Load compositions	Cargar composiciones
+	Reading project…	Leyendo proyecto…
+	Visual only · Audio stays in FilmCraft	Solo imagen · El audio permanece en FilmCraft
+	EffectCraft renderer setup	Configuración del renderizador de EffectCraft
+	Choose the EffectCraft command-line executable. FilmCraft remembers it.	Elige el ejecutable de línea de comandos de EffectCraft. FilmCraft recordará la selección.
+	Choose executable…	Elegir ejecutable…
+	Relink composition	Revincular composición
+	Link composition	Vincular composición
+	Updating EffectCraft composition…	Actualizando composición de EffectCraft…
+	EffectCraft link needs attention — {error}	El vínculo de EffectCraft requiere atención — {error}
+	open EffectCraft Links for details	abre Vínculos de EffectCraft para ver los detalles
+	Updating EffectCraft links — showing the last completed picture	Actualizando vínculos de EffectCraft — se muestra la última imagen completada
+	EffectCraft updates paused — showing the last completed picture	Actualizaciones de EffectCraft en pausa — se muestra la última imagen completada
+	Saved changes update automatically. An older picture stays visible while an update renders.	Los cambios guardados se actualizan automáticamente. La imagen anterior permanece visible mientras se renderiza la actualización.
+	Refresh links	Actualizar vínculos
+	Cancel updates	Cancelar actualizaciones
+	Baked — automatic updates off	Prerenderizado — actualizaciones automáticas desactivadas
+	Up to date	Actualizado
+	Update failed — previous picture retained	La actualización falló — se conserva la imagen anterior
+	Updates cancelled — previous picture retained	Actualizaciones canceladas — se conserva la imagen anterior
+	Preparing baked movie…	Preparando vídeo prerenderizado…
+	Checking / updating…	Comprobando / actualizando…
+	Open source project	Abrir proyecto de origen
+	Relink…	Revincular…
+	Restore link	Restaurar vínculo
+	Bake movie	Prerenderizar vídeo
+	Importing composition…	Importando composición…
+	Composition import needs attention	La importación de la composición requiere atención
+	EffectCraft Project	Proyecto de EffectCraft

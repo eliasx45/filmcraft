@@ -360,3 +360,13 @@
 	Zoom to Sequence	Умістити секвенцію
 	Project Notes	Нотатки проєкту
 
+# Native EffectCraft composition links
+	EffectCraft	EffectCraft
+	EffectCraft Links	Зв’язки EffectCraft
+	Link EffectCraft Composition…	Пов’язати композицію EffectCraft…
+	Relink EffectCraft Composition…	Переприв’язати композицію EffectCraft…
+	Replace with EffectCraft Composition…	Замінити композицією EffectCraft…
+	Bake EffectCraft Composition	Попередньо відрендерити композицію EffectCraft
+	Restore EffectCraft Link	Відновити зв’язок EffectCraft
+	Refresh EffectCraft Links	Оновити зв’язки EffectCraft
+	Cancel EffectCraft Updates	Скасувати оновлення EffectCraft

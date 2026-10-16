@@ -3578,3 +3578,14 @@
 
 # The native macOS application menu (Settings…).
 	Settings	Preferências
+
+# Native EffectCraft composition links
+	EffectCraft	EffectCraft
+	EffectCraft Links	Vínculos do EffectCraft
+	Link EffectCraft Composition…	Vincular composição do EffectCraft…
+	Relink EffectCraft Composition…	Revincular composição do EffectCraft…
+	Replace with EffectCraft Composition…	Substituir por composição do EffectCraft…
+	Bake EffectCraft Composition	Pré-renderizar composição do EffectCraft
+	Restore EffectCraft Link	Restaurar vínculo do EffectCraft
+	Refresh EffectCraft Links	Atualizar vínculos do EffectCraft
+	Cancel EffectCraft Updates	Cancelar atualizações do EffectCraft

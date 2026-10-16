@@ -1,5 +1,6 @@
 # FilmCraft Roadmap
 
+- DL1: Experimental native [EffectCraft composition links](docs/effectcraft-links.md): saved-source refresh, visual clip replacement, restorable baking and export freshness checks. Synthetic engine/UI coverage; no real-time, Adobe Dynamic Link, or real-project parity claim.
 - UI.6: Compact Source and Program monitors separate timecodes from view settings and retain Source drag choices. Transport controls use the shared toolbar sizing helper, with overflow actions in an operable More menu and a scrolling fallback at tiny widths.
 - UI.3: Panel tabs, edge splits, tab reordering and floating groups use the shared docking model and drop resolver. Floating geometry is saved with named workspaces while legacy layout JSON remains readable. Dock dividers use bounded shared geometry and keyboard-accessible resize handles. Tools and dock tabs expose actual widget focus, paint focus outlines, and support keyboard traversal/activation. Control input reaches focused widgets in background windows; optional input isolation supports unattended validation. Existing workspace trees and saved layout formats are retained.
 

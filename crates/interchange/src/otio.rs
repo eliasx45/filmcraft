@@ -141,6 +141,7 @@ impl Exp<'_, '_> {
         let Some((it, s)) = self.p.item(id).and_then(|it| Some((it, it.as_sequence()?))) else { return json!({}) };
         json!({
             "item": id.0,
+            "keyframe_time_base": "source",
             "label": it.label,
             "settings": s.settings,
             "start_timecode": s.start_timecode,

@@ -3609,3 +3609,49 @@
 	Shows the version, community links and credits in a FilmCraft window.	バージョン、コミュニティへのリンク、クレジットを FilmCraft のウィンドウに表示します。
 	Couldn't open your web browser	ウェブブラウザーを開けませんでした
 	Open this address in your browser yourself:	このアドレスをご自身でブラウザーで開いてください：
+
+# Native EffectCraft composition links
+	EffectCraft	EffectCraft
+	EffectCraft Links	EffectCraft リンク
+	Link EffectCraft Composition…	EffectCraft コンポジションをリンク…
+	Relink EffectCraft Composition…	EffectCraft コンポジションを再リンク…
+	Replace with EffectCraft Composition…	EffectCraft コンポジションに置き換え…
+	Bake EffectCraft Composition	EffectCraft コンポジションをベイク
+	Restore EffectCraft Link	EffectCraft リンクを復元
+	Refresh EffectCraft Links	EffectCraft リンクを更新
+	Cancel EffectCraft Updates	EffectCraft の更新をキャンセル
+	Composition Link Status	コンポジションリンクの状態
+	EffectCraft renderer executable	EffectCraft レンダラーの実行ファイル
+	Configure EffectCraft Renderer	EffectCraft レンダラーを設定
+	Relink EffectCraft Composition	EffectCraft コンポジションを再リンク
+	Link EffectCraft Composition	EffectCraft コンポジションをリンク
+	Choose a saved EffectCraft project. FilmCraft updates its picture after each save.	保存済みの EffectCraft プロジェクトを選択します。保存するたびに FilmCraft の映像が更新されます。
+	Load compositions	コンポジションを読み込む
+	Reading project…	プロジェクトを読み込み中…
+	Visual only · Audio stays in FilmCraft	映像のみ・音声は FilmCraft に保持されます
+	EffectCraft renderer setup	EffectCraft レンダラーの設定
+	Choose the EffectCraft command-line executable. FilmCraft remembers it.	EffectCraft のコマンドライン実行ファイルを選択します。FilmCraft はこの設定を保存します。
+	Choose executable…	実行ファイルを選択…
+	Relink composition	コンポジションを再リンク
+	Link composition	コンポジションをリンク
+	Updating EffectCraft composition…	EffectCraft コンポジションを更新中…
+	EffectCraft link needs attention — {error}	EffectCraft リンクの確認が必要です — {error}
+	open EffectCraft Links for details	詳細は EffectCraft リンクを開いてください
+	Updating EffectCraft links — showing the last completed picture	EffectCraft リンクを更新中 — 最後に完成した映像を表示しています
+	EffectCraft updates paused — showing the last completed picture	EffectCraft の更新を一時停止中 — 最後に完成した映像を表示しています
+	Saved changes update automatically. An older picture stays visible while an update renders.	保存した変更は自動的に反映されます。更新のレンダリング中は以前の映像が表示されます。
+	Refresh links	リンクを更新
+	Cancel updates	更新をキャンセル
+	Baked — automatic updates off	ベイク済み — 自動更新は無効
+	Up to date	最新の状態
+	Update failed — previous picture retained	更新に失敗 — 以前の映像を保持しています
+	Updates cancelled — previous picture retained	更新をキャンセル — 以前の映像を保持しています
+	Preparing baked movie…	ベイクする動画を準備中…
+	Checking / updating…	確認・更新中…
+	Open source project	元のプロジェクトを開く
+	Relink…	再リンク…
+	Restore link	リンクを復元
+	Bake movie	動画をベイク
+	Importing composition…	コンポジションを読み込み中…
+	Composition import needs attention	コンポジションの読み込みを確認してください
+	EffectCraft Project	EffectCraft プロジェクト

@@ -3601,3 +3601,14 @@
 	Shows the version, community links and credits in a FilmCraft window.	Mostra la versione, i link della community e i riconoscimenti in una finestra di FilmCraft.
 	Couldn't open your web browser	Impossibile aprire il browser web
 	Open this address in your browser yourself:	Apri tu questo indirizzo nel browser:
+
+# Native EffectCraft composition links
+	EffectCraft	EffectCraft
+	EffectCraft Links	Collegamenti EffectCraft
+	Link EffectCraft Composition…	Collega composizione EffectCraft…
+	Relink EffectCraft Composition…	Ricollega composizione EffectCraft…
+	Replace with EffectCraft Composition…	Sostituisci con composizione EffectCraft…
+	Bake EffectCraft Composition	Prerenderizza composizione EffectCraft
+	Restore EffectCraft Link	Ripristina collegamento EffectCraft
+	Refresh EffectCraft Links	Aggiorna collegamenti EffectCraft
+	Cancel EffectCraft Updates	Annulla aggiornamenti EffectCraft

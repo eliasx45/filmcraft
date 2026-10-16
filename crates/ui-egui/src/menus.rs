@@ -22,6 +22,8 @@ macro_rules! uic {
 }
 
 pub const UI_COMMANDS: &[UiCommand] = &[
+    #[cfg(not(target_arch = "wasm32"))]
+    uic!("link.manager", "EffectCraft Links", ["Window"], None),
     uic!("window.dockAction", "Docking Action", [], None),
     uic!("window.dockPanel", "Dock Panel", [], None),
     uic!("window.floatPanel", "Undock Panel", [], None),
@@ -570,6 +572,31 @@ pub fn invoke(app: &mut FilmcraftApp, ctx: &egui::Context, id: &str, mut params:
         next.general.recent_projects.clear();
         app.session.set_prefs(next).map_err(|e| e.to_string())?;
         return Ok(Value::Null);
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    if matches!(id, "link.import" | "link.relink") && params.get("path").is_none() {
+        return crate::composition_links::open(app, ctx, id == "link.relink");
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    if id == "link.manager" {
+        crate::composition_links::open_manager(ctx);
+        return Ok(Value::Null);
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    if id == "link.replace" && params.get("path").is_none() {
+        filmcraft_engine::linked_handoff::Plan::prepare(&app.session).map_err(|e| e.to_string())?;
+        let ctx = ctx.clone();
+        return app.pick(
+            crate::native_dialogs::FileDialog::save_as(tl!("EffectCraft Project"), &["ecproj"], "Linked Composition.ecproj"),
+            move |app, paths| {
+                let Some(path) = paths.first() else {
+                    return Ok(Value::Null);
+                };
+                let result = app.session.execute("link.replace", json!({"path":path})).map_err(|e| e.to_string())?;
+                crate::composition_links::open_manager(&ctx);
+                Ok(result)
+            },
+        );
     }
     // File dialogs for commands that need a path.
     if (id == "file.import" && params.get("paths").is_none() && params.get("path").is_none())

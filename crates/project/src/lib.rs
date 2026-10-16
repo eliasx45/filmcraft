@@ -17,6 +17,7 @@ pub mod graphic;
 pub mod graphic_design;
 pub mod gtemplate;
 pub mod keyframe;
+pub mod linked_composition;
 pub mod mask;
 pub mod mixer;
 pub mod multicam;
@@ -1257,6 +1258,10 @@ pub struct Project {
     /// instructions for whoever opens it next, frame numbers and the like. Schema v15.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub notes: String,
+    /// EffectCraft sources of generated media items. Cache files are replaceable; these
+    /// references survive baking so the editor can restore the connection. Schema v16.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub linked_compositions: BTreeMap<ItemId, linked_composition::LinkedComposition>,
 }
 
 /// How a sequence is shown in the Timeline panel: its zoom, scroll position and track heights.
@@ -1353,6 +1358,7 @@ impl Project {
             source_graphics: BTreeMap::new(),
             narrations: BTreeMap::new(),
             notes: String::new(),
+            linked_compositions: BTreeMap::new(),
         }
     }
 

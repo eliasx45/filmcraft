@@ -464,6 +464,12 @@ fn write_sidecar(s: &Session, project: &Project, seq: ItemId, settings: &ExportS
 
 /// Run an export of `seq` in `project` as a background job (or now, with `wait`); returns the job id.
 pub fn spawn_export(s: &mut Session, project: Arc<Project>, seq: ItemId, mut settings: ExportSettings, label: String, wait: bool) -> Result<u64> {
+    if cfg!(target_arch = "wasm32") && !project.linked_compositions.is_empty() {
+        let used = crate::project_tools::closure(&project, &[seq]);
+        if project.linked_compositions.iter().any(|(id, link)| used.contains(id) && !link.baked) {
+            return Err(EngineError::Other("Update and bake EffectCraft links in the desktop app before exporting in a browser".into()));
+        }
+    }
     let format = settings.format;
     if !filmcraft_export::available(format) {
         return Err(EngineError::Other(format!("{} export is not available (no encoder registered)", format.label())));
@@ -490,9 +496,18 @@ pub fn spawn_export(s: &mut Session, project: Arc<Project>, seq: ItemId, mut set
         s.stepped.push(crate::SteppedJob { job: id, exporter, provider, progress: prog, result: res });
         return Ok(id);
     }
+    #[cfg(not(target_arch = "wasm32"))]
+    let link_export = (s.links.executable.clone(), s.links.cache_root.clone(), s.services.clone(), s.media.clone());
     let run = move || {
-        let r = filmcraft_export::export(&project, seq, &settings, &provider, &prog).map_err(|e| e.to_string());
-        *offline.lock().unwrap_or_else(|x| x.into_inner()) = provider.offline_used();
+        let r = (|| {
+            #[cfg(not(target_arch = "wasm32"))]
+            let project = crate::linked_compositions::prepare_export(&project, seq, &link_export.0, &link_export.1, link_export.2.as_ref(), &prog)?;
+            #[cfg(not(target_arch = "wasm32"))]
+            let provider = link_export.3.full_res_provider(project.clone(), link_export.2.clone()).recording();
+            let result = filmcraft_export::export(&project, seq, &settings, &provider, &prog).map_err(|e| e.to_string());
+            *offline.lock().unwrap_or_else(|x| x.into_inner()) = provider.offline_used();
+            result
+        })();
         if let Err(e) = &r {
             *prog.error.lock().unwrap_or_else(|x| x.into_inner()) = Some(e.clone());
             prog.finished.store(true, Ordering::Relaxed);

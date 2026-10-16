@@ -360,3 +360,13 @@
 	Next Appearance Mode	Следующий режим оформления
 	Project Notes	Заметки проекта
 
+# Native EffectCraft composition links
+	EffectCraft	EffectCraft
+	EffectCraft Links	Связи EffectCraft
+	Link EffectCraft Composition…	Связать композицию EffectCraft…
+	Relink EffectCraft Composition…	Перепривязать композицию EffectCraft…
+	Replace with EffectCraft Composition…	Заменить композицией EffectCraft…
+	Bake EffectCraft Composition	Предварительно отрендерить композицию EffectCraft
+	Restore EffectCraft Link	Восстановить связь EffectCraft
+	Refresh EffectCraft Links	Обновить связи EffectCraft
+	Cancel EffectCraft Updates	Отменить обновления EffectCraft

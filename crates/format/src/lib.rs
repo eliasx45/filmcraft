@@ -39,6 +39,8 @@
 //!   would drop them when saving.
 //! - **v15**: project notes (`Project::notes`, Window ▸ Project Notes). No-op step; older builds
 //!   would drop them when saving.
+//! - **v16**: saved EffectCraft composition references. No-op step; older builds must refuse
+//!   these files rather than silently replacing linked compositions with ordinary cached movies.
 
 #![cfg_attr(not(test), deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable))]
 
@@ -59,8 +61,10 @@ pub type Migration = fn(Value) -> Result<Value, String>;
 
 /// `MIGRATIONS[i]` upgrades schema `i + 1` to `i + 2`. Append one function per schema bump; never
 /// edit a shipped one.
-pub const MIGRATIONS: &[Migration] =
-    &[v1_to_v2, v2_to_v3, v3_to_v4, v4_to_v5, v5_to_v6, v6_to_v7, v7_to_v8, v8_to_v9, v9_to_v10, v10_to_v11, v11_to_v12, v12_to_v13, v13_to_v14, v14_to_v15];
+pub const MIGRATIONS: &[Migration] = &[
+    v1_to_v2, v2_to_v3, v3_to_v4, v4_to_v5, v5_to_v6, v6_to_v7, v7_to_v8, v8_to_v9, v9_to_v10, v10_to_v11, v11_to_v12, v12_to_v13, v13_to_v14, v14_to_v15,
+    v15_to_v16,
+];
 
 /// The schema version this build writes (and the newest it reads).
 pub const SCHEMA_VERSION: u32 = MIGRATIONS.len() as u32 + 1;
@@ -216,6 +220,9 @@ pub fn decode(bytes: &[u8]) -> Result<Loaded, FormatError> {
 /// Refuse only values that would overflow or exhaust memory later (`Sequence::check_bounds`);
 /// structural rules such as overlaps are left to the editor, so projects that open today still open.
 fn validate_loaded(mut loaded: Loaded) -> Result<Loaded, FormatError> {
+    for (item, link) in &loaded.project.linked_compositions {
+        link.validate().map_err(|e| FormatError::Corrupt(format!("EffectCraft link for item {}: {e}", item.0)))?;
+    }
     // Out-of-range audio stream data is repaired, not refused: failing the load would lose the
     // whole project over one bad index. A media item keeps its first `MAX_AUDIO_STREAMS` streams; a
     // clip pointing past that plays stream 0.
@@ -361,13 +368,42 @@ fn v14_to_v15(doc: Value) -> Result<Value, String> {
     Ok(doc)
 }
 
+/// v15 → v16: linked EffectCraft compositions. Older builds must not silently drop links.
+fn v15_to_v16(doc: Value) -> Result<Value, String> {
+    Ok(doc)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn schema_version_matches_table() {
-        assert_eq!(SCHEMA_VERSION, 15);
+        assert_eq!(SCHEMA_VERSION, 16);
+    }
+
+    #[test]
+    fn effectcraft_links_survive_save_and_bake() {
+        use filmcraft_project::{ItemId, linked_composition::LinkedComposition};
+        let mut project = Project::new("Linked titles");
+        let link = LinkedComposition { project_path: "/projects/Titles.ecproj".into(), composition_id: 42, baked: false };
+        project.linked_compositions.insert(ItemId(7), link.clone());
+        assert_eq!(decode(&encode(&project, false)).unwrap().project.linked_compositions[&ItemId(7)], link);
+        project.linked_compositions.get_mut(&ItemId(7)).unwrap().baked = true;
+        assert_eq!(decode(&encode(&project, false)).unwrap().project, project);
+        project.linked_compositions.get_mut(&ItemId(7)).unwrap().composition_id = 0;
+        assert!(matches!(decode(&encode(&project, false)), Err(FormatError::Corrupt(_))));
+    }
+
+    #[test]
+    fn schema_fifteen_opens_without_links() {
+        let project = Project::new("Old project");
+        let mut doc: Value = serde_json::from_slice(&encode(&project, false)).unwrap();
+        doc["schema_version"] = Value::from(15);
+        doc["project"].as_object_mut().unwrap().remove("linked_compositions");
+        let loaded = decode(&serde_json::to_vec(&doc).unwrap()).unwrap();
+        assert!(loaded.migrated());
+        assert!(loaded.project.linked_compositions.is_empty());
     }
 
     #[test]

@@ -24,6 +24,12 @@ pub mod graphics;
 pub mod interchange;
 pub mod keyboard;
 mod keyframe_move;
+#[cfg(not(target_arch = "wasm32"))]
+pub mod linked_compositions;
+#[cfg(not(target_arch = "wasm32"))]
+pub mod linked_handoff;
+#[cfg(not(target_arch = "wasm32"))]
+pub mod linked_render;
 mod marker_export;
 pub mod masks;
 pub mod media_browser;
@@ -377,6 +383,8 @@ pub enum Event {
 }
 
 pub struct Session {
+    #[cfg(not(target_arch = "wasm32"))]
+    pub links: linked_compositions::Runtime,
     pub project: Arc<Project>,
     pub history: History,
     pub revision: u64,
@@ -539,12 +547,16 @@ impl Session {
             exec_depth: 0,
             media_stamps: Default::default(),
             media_scan: None,
+            #[cfg(not(target_arch = "wasm32"))]
+            links: Default::default(),
         }
     }
 
     /// Advance stepped jobs ([`SteppedJob`]) for up to `budget` (at least one step). Returns
     /// whether jobs remain. A job whose media is still loading waits for the next call.
     pub fn pump_jobs(&mut self, budget: std::time::Duration) -> bool {
+        #[cfg(not(target_arch = "wasm32"))]
+        linked_compositions::poll(self);
         export_tools::pump_queue(self, false);
         let t0 = web_time::Instant::now();
         while let Some(j) = self.stepped.first_mut() {
@@ -576,6 +588,13 @@ impl Session {
     pub fn start_autosave(&mut self, cfg: autosave::AutosaveConfig) -> std::io::Result<()> {
         let prefs_path = cfg.data_dir.join("preferences.json");
         self.prefs = autosave::Preferences::load(&prefs_path);
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            if !self.prefs.general.effectcraft_renderer.is_empty() {
+                self.links.executable = self.prefs.general.effectcraft_renderer.clone().into();
+            }
+            self.links.cache_root = cfg.data_dir.join("EffectCraft Cache");
+        }
         self.prefs.apply_hardware_decoding();
         self.media.set_use_proxies(self.prefs.media.enable_proxies);
         self.shortcuts.set_dir(&cfg.data_dir);
@@ -621,6 +640,8 @@ impl Session {
     /// Apply worker notifications (call regularly, e.g. once per UI frame). Also applies the
     /// results of finished proxy / ingest jobs.
     pub fn poll_persistence(&mut self) {
+        #[cfg(not(target_arch = "wasm32"))]
+        linked_compositions::poll(self);
         proxies::poll(self);
         masks::poll(self);
         scene_detect::poll(self);
@@ -647,6 +668,15 @@ impl Session {
     /// Replace preferences (persisting them and updating the worker).
     pub fn set_prefs(&mut self, p: autosave::Preferences) -> std::io::Result<()> {
         let cache_changed = self.prefs.media_cache != p.media_cache;
+        #[cfg(not(target_arch = "wasm32"))]
+        if self.prefs.general.effectcraft_renderer != p.general.effectcraft_renderer {
+            self.links.reset();
+            self.links.executable = if p.general.effectcraft_renderer.is_empty() {
+                linked_compositions::Runtime::default().executable
+            } else {
+                p.general.effectcraft_renderer.clone().into()
+            };
+        }
         self.prefs = p;
         self.prefs.apply_hardware_decoding();
         if cache_changed {
@@ -837,6 +867,7 @@ impl Session {
         let mut st = self.state.clone();
         let r = f(&mut p, &mut st)?;
         self.refuse_self_nesting(&p)?;
+        p.linked_compositions.retain(|id, _| p.items.contains_key(id));
         let old = std::mem::replace(&mut self.project, Arc::new(p));
         self.history.undo.push((label.to_string(), old));
         if self.history.undo.len() > self.history.limit {
@@ -863,6 +894,7 @@ impl Session {
         let mut st = self.state.clone();
         let r = f(&mut p, &mut st)?;
         self.refuse_self_nesting(&p)?;
+        p.linked_compositions.retain(|id, _| p.items.contains_key(id));
         self.project = Arc::new(p);
         self.state = st;
         self.drop_stale_gap();
@@ -1329,3 +1361,6 @@ mod source_placement_tests;
 mod frame_export_tests;
 #[cfg(test)]
 mod wasm_clock_tests;
+
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod linked_bench_tests;

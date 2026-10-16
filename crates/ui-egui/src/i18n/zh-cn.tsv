@@ -3585,3 +3585,49 @@
 	Shows the version, community links and credits in a FilmCraft window.	在 FilmCraft 窗口中显示版本、社区链接和致谢。
 	Couldn't open your web browser	无法打开网页浏览器
 	Open this address in your browser yourself:	请自行在浏览器中打开此地址：
+
+# Native EffectCraft composition links
+	EffectCraft	EffectCraft
+	EffectCraft Links	EffectCraft 链接
+	Link EffectCraft Composition…	链接 EffectCraft 合成…
+	Relink EffectCraft Composition…	重新链接 EffectCraft 合成…
+	Replace with EffectCraft Composition…	替换为 EffectCraft 合成…
+	Bake EffectCraft Composition	预渲染 EffectCraft 合成
+	Restore EffectCraft Link	恢复 EffectCraft 链接
+	Refresh EffectCraft Links	刷新 EffectCraft 链接
+	Cancel EffectCraft Updates	取消 EffectCraft 更新
+	Composition Link Status	合成链接状态
+	EffectCraft renderer executable	EffectCraft 渲染器可执行文件
+	Configure EffectCraft Renderer	配置 EffectCraft 渲染器
+	Relink EffectCraft Composition	重新链接 EffectCraft 合成
+	Link EffectCraft Composition	链接 EffectCraft 合成
+	Choose a saved EffectCraft project. FilmCraft updates its picture after each save.	选择已保存的 EffectCraft 项目。每次保存后，FilmCraft 都会更新画面。
+	Load compositions	加载合成
+	Reading project…	正在读取项目…
+	Visual only · Audio stays in FilmCraft	仅画面 · 音频保留在 FilmCraft 中
+	EffectCraft renderer setup	EffectCraft 渲染器设置
+	Choose the EffectCraft command-line executable. FilmCraft remembers it.	选择 EffectCraft 命令行可执行文件。FilmCraft 会记住此设置。
+	Choose executable…	选择可执行文件…
+	Relink composition	重新链接合成
+	Link composition	链接合成
+	Updating EffectCraft composition…	正在更新 EffectCraft 合成…
+	EffectCraft link needs attention — {error}	EffectCraft 链接需要处理 — {error}
+	open EffectCraft Links for details	打开 EffectCraft 链接查看详情
+	Updating EffectCraft links — showing the last completed picture	正在更新 EffectCraft 链接 — 显示上次完成的画面
+	EffectCraft updates paused — showing the last completed picture	EffectCraft 更新已暂停 — 显示上次完成的画面
+	Saved changes update automatically. An older picture stays visible while an update renders.	保存的更改会自动更新。渲染更新时，仍会显示之前的画面。
+	Refresh links	刷新链接
+	Cancel updates	取消更新
+	Baked — automatic updates off	已预渲染 — 自动更新已关闭
+	Up to date	已是最新
+	Update failed — previous picture retained	更新失败 — 已保留之前的画面
+	Updates cancelled — previous picture retained	更新已取消 — 已保留之前的画面
+	Preparing baked movie…	正在准备预渲染影片…
+	Checking / updating…	正在检查或更新…
+	Open source project	打开源项目
+	Relink…	重新链接…
+	Restore link	恢复链接
+	Bake movie	预渲染影片
+	Importing composition…	正在导入合成…
+	Composition import needs attention	合成导入需要处理
+	EffectCraft Project	EffectCraft 项目

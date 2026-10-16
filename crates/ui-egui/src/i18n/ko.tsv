@@ -3596,3 +3596,14 @@
 	Shows the version, community links and credits in a FilmCraft window.	FilmCraft 창에 버전, 커뮤니티 링크, 제작진을 보여 줍니다.
 	Couldn't open your web browser	웹 브라우저를 열 수 없습니다
 	Open this address in your browser yourself:	이 주소를 브라우저에서 직접 여세요:
+
+# Native EffectCraft composition links
+	EffectCraft	EffectCraft
+	EffectCraft Links	EffectCraft 연결
+	Link EffectCraft Composition…	EffectCraft 컴포지션 연결…
+	Relink EffectCraft Composition…	EffectCraft 컴포지션 다시 연결…
+	Replace with EffectCraft Composition…	EffectCraft 컴포지션으로 바꾸기…
+	Bake EffectCraft Composition	EffectCraft 컴포지션 사전 렌더링
+	Restore EffectCraft Link	EffectCraft 연결 복원
+	Refresh EffectCraft Links	EffectCraft 연결 새로 고침
+	Cancel EffectCraft Updates	EffectCraft 업데이트 취소

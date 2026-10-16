@@ -33,6 +33,8 @@ pub mod automation;
 pub mod brand;
 pub mod calc;
 mod cjk;
+#[cfg(not(target_arch = "wasm32"))]
+pub mod composition_links;
 pub mod control;
 pub mod crash;
 pub mod credits;
@@ -1822,12 +1824,21 @@ impl FilmcraftApp {
                 ui.ctx().request_repaint_after(std::time::Duration::from_secs(1));
             }
         }
-        let hint = if !self.ui.status.is_empty() { self.ui.status.clone() } else { self.hint_text() };
+        #[cfg(not(target_arch = "wasm32"))]
+        let link_hint = crate::composition_links::hint(self);
+        #[cfg(target_arch = "wasm32")]
+        let link_hint: Option<String> = None;
+        let hint = if !self.ui.status.is_empty() { self.ui.status.clone() } else { link_hint.clone().unwrap_or_else(|| self.hint_text()) };
         ui.painter().text(egui::pos2(sb.min.x + 10.0, sb.center().y), egui::Align2::LEFT_CENTER, hint, Tokens::ui(11.0), t.text_dim);
         let resp = ui.interact(sb, egui::Id::new("status-bar"), egui::Sense::click());
         if resp.clicked() {
             self.ui.status.clear();
+            #[cfg(not(target_arch = "wasm32"))]
+            if link_hint.is_some() {
+                crate::composition_links::open_manager(ui.ctx());
+            }
         }
+        self.auto.add_response("statusBar", &resp, "Status; click for details");
         self.job_status(ui, sb, &t);
     }
 

@@ -24,10 +24,10 @@ fn harness(show_header: bool, show_status_bar: bool) -> Harness<'static, Filmcra
     harness
 }
 
-/// Top and bottom edge of every registered element outside the header (the menu bar, `menu.*`, is part of it).
+/// Top and bottom edge of panel elements, excluding registered window chrome.
 fn body_extent(h: &Harness<'static, FilmcraftApp>) -> (f32, f32) {
     let els = h.state().auto.query("");
-    let body: Vec<_> = els.iter().filter(|e| !e.id.starts_with("header.") && !e.id.starts_with("menu.")).collect();
+    let body: Vec<_> = els.iter().filter(|e| !e.id.starts_with("header.") && !e.id.starts_with("menu.") && e.id != "statusBar").collect();
     assert!(!body.is_empty(), "no panel elements registered");
     let top = body.iter().map(|e| e.rect[1]).fold(f32::INFINITY, f32::min);
     let bottom = body.iter().map(|e| e.rect[1] + e.rect[3]).fold(f32::NEG_INFINITY, f32::max);
@@ -40,6 +40,8 @@ fn header_and_status_bar_are_shown_by_default() {
     assert!(UiState::default().show_status_bar);
     let h = harness(true, true);
     assert!(!h.state().auto.query("header.").is_empty());
+    let status = h.state().auto.find("statusBar").expect("status bar is agent-drivable");
+    assert!(status.rect[1] >= H - 20.0 && status.rect[1] + status.rect[3] <= H);
     let (top, bottom) = body_extent(&h);
     assert!(top >= 38.0, "panels start under the header: {top}");
     assert!(bottom <= H - 20.0, "panels end above the status bar: {bottom}");
@@ -50,6 +52,7 @@ fn header_and_status_bar_are_shown_by_default() {
 fn hidden_header_and_status_bar_give_the_panels_the_window() {
     let h = harness(false, false);
     assert!(h.state().auto.query("header.").is_empty(), "header drawn while hidden");
+    assert!(h.state().auto.find("statusBar").is_none());
     let (top, bottom) = body_extent(&h);
     assert!(top < 38.0, "panels start at the top of the window: {top}");
     assert!(bottom > H - 20.0, "panels reach the bottom of the window: {bottom}");

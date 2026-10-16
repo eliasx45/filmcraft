@@ -4,6 +4,8 @@
 use crate::{Dialog, FilmcraftApp};
 
 pub fn show(app: &mut FilmcraftApp, ctx: &egui::Context) {
+    #[cfg(not(target_arch = "wasm32"))]
+    crate::composition_links::show(app, ctx);
     crate::panels::media_dialogs::show(app, ctx);
     crate::panels::color_dialogs::show(app, ctx);
     crate::panels::clip_dialogs::show(app, ctx);

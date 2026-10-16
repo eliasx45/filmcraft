@@ -58,6 +58,8 @@ pub struct GeneralPrefs {
     pub show_mask_tracker_preview: bool,
     /// Most recently opened / saved projects (newest first; not shown in the dialog).
     pub recent_projects: Vec<String>,
+    /// Trusted local executable for composition links; never stored in a project.
+    pub effectcraft_renderer: String,
 }
 
 impl Default for GeneralPrefs {
@@ -80,6 +82,7 @@ impl Default for GeneralPrefs {
             show_project_bin_in_tab: true,
             show_mask_tracker_preview: true,
             recent_projects: Vec::new(),
+            effectcraft_renderer: String::new(),
         }
     }
 }
@@ -1037,6 +1040,7 @@ static CATEGORIES: &[Category] = &[
             b("general.showCompatibilityIssues", "Show system compatibility issues at startup", false),
             b("general.showProjectBinInTab", "Show \"Project:\" and \"Bin:\" in Project panel tab", false),
             b("general.showMaskTrackerPreview", "Show Mask Tracker Preview", false),
+            f("general.effectcraftRenderer", "EffectCraft renderer executable", Kind::Text, true),
         ],
     },
     Category {
