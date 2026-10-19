@@ -18,6 +18,8 @@ pub struct Plan {
     target: TrackId,
     start: Tick,
     duration: Tick,
+    /// Clip effects (and effect masks) left out of the handoff: EffectCraft can't import them yet.
+    pub dropped: Vec<String>,
 }
 
 impl Plan {
@@ -81,6 +83,7 @@ impl Plan {
         let keep = crate::project_tools::closure(&fragment, &[sequence]);
         fragment = crate::project_tools::project_subset(&fragment, &keep);
         let dependencies = keep.iter().filter(|id| **id != sequence).filter_map(|id| session.project.item(*id).map(|item| (*id, item.clone()))).collect();
+        let mut dropped: Vec<String> = Vec::new();
         for (id, item) in &mut fragment.items {
             if session.project.linked_compositions.get(id).is_some_and(|link| !link.baked) {
                 return Err(fail("bake existing composition links before sending them to another composition"));
@@ -91,7 +94,7 @@ impl Plan {
                     seq.audio_tracks.clear();
                     seq.caption_tracks.clear();
                     seq.markers.clear();
-                    for clip in seq.video_tracks.iter().flat_map(|t| &t.items) {
+                    for clip in seq.video_tracks.iter_mut().flat_map(|t| &mut t.items) {
                         if clip.multicam.is_some()
                             || clip.graphic.is_some()
                             || clip.hold_filters
@@ -100,9 +103,22 @@ impl Plan {
                         {
                             return Err(fail("multi-camera, graphics, field options and non-default time interpolation need to be rendered first"));
                         }
-                        if clip.effects.iter().any(|e| !e.masks.is_empty() || !matches!(e.effect.as_str(), "motion" | "opacity" | "time_remap")) {
-                            return Err(fail("this handoff supports Motion and Opacity; render other effects or masks first"));
+                        // EffectCraft imports Motion, Opacity and speed only: the rest is left out, with a warning.
+                        for effect in clip.effects.iter_mut() {
+                            let name = effect.def().map_or_else(|| effect.effect.clone(), |d| d.name.to_string());
+                            if !matches!(effect.effect.as_str(), "motion" | "opacity" | "time_remap") {
+                                if !dropped.contains(&name) {
+                                    dropped.push(name);
+                                }
+                            } else if !effect.masks.is_empty() {
+                                let masks = format!("{name} masks");
+                                if !dropped.contains(&masks) {
+                                    dropped.push(masks);
+                                }
+                                effect.masks.clear();
+                            }
                         }
+                        clip.effects.retain(|e| matches!(e.effect.as_str(), "motion" | "opacity" | "time_remap"));
                         if clip.effects.iter().any(|e| e.effect == "time_remap" && e.params.values().any(|p| p.is_animated())) {
                             return Err(fail("variable-speed clips need to be rendered first"));
                         }
@@ -128,7 +144,12 @@ impl Plan {
             }
         }
         fragment.linked_compositions.clear();
-        Ok(Self { sequence, original: original.clone(), dependencies, fragment: Arc::new(fragment), selected, target, start, duration })
+        Ok(Self { sequence, original: original.clone(), dependencies, fragment: Arc::new(fragment), selected, target, start, duration, dropped })
+    }
+
+    /// The warning for effects left out of the handoff, if any.
+    pub fn warning(&self) -> Option<String> {
+        (!self.dropped.is_empty()).then(|| format!("not sent to EffectCraft (it can't import them yet): {}", self.dropped.join(", ")))
     }
 
     pub fn is_current(&self, project: &Project) -> bool {
@@ -220,6 +241,22 @@ mod tests {
             assert!(Instant::now() < deadline, "handoff timed out: {:?}", session.links.status);
             std::thread::sleep(Duration::from_millis(10));
         }
+    }
+
+    #[test]
+    fn clip_effects_are_left_out_of_the_handoff_with_a_warning() {
+        let mut session = Session::default();
+        session.execute("file.openDemoProject", json!({})).unwrap();
+        let clip = session.active_sequence().unwrap().video_tracks.iter().flat_map(|t| &t.items).find(|c| c.effect("drop_shadow").is_some()).unwrap().id;
+        session.state.selection = vec![clip];
+        let plan = Plan::prepare(&session).unwrap();
+        assert_eq!(plan.dropped, ["Drop Shadow"]);
+        assert!(plan.warning().unwrap().contains("Drop Shadow"));
+        let sent = plan.fragment.sequence(plan.sequence).unwrap();
+        let effects: Vec<_> = sent.video_tracks.iter().flat_map(|t| &t.items).flat_map(|c| &c.effects).map(|e| e.effect.as_str()).collect();
+        assert!(!effects.contains(&"drop_shadow") && effects.contains(&"motion"), "{effects:?}");
+        // the FilmCraft timeline itself keeps the effect until the replacement lands
+        assert!(session.active_sequence().unwrap().video_tracks.iter().flat_map(|t| &t.items).any(|c| c.id == clip && c.effect("drop_shadow").is_some()));
     }
 
     #[test]

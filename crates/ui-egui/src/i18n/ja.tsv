@@ -3662,3 +3662,7 @@
 	Open a sequence to search its graphics	シーケンスを開くとグラフィックスを検索できます
 	No text graphics in this sequence. Add text with the Type tool.	このシーケンスにはテキストのグラフィックスがありません。文字ツールでテキストを追加してください。
 	No matching text.	一致するテキストはありません。
+
+# Move Playhead to Cursor; EffectCraft handoff warnings
+	Move Playhead to Cursor	再生ヘッドをカーソル位置に移動
+	EffectCraft link — {warning}	EffectCraft リンク — {warning}

@@ -3619,3 +3619,7 @@
 	Open a sequence to search its graphics	Apri una sequenza per cercare nelle sue grafiche
 	No text graphics in this sequence. Add text with the Type tool.	Nessuna grafica con testo in questa sequenza. Aggiungi testo con lo strumento Testo.
 	No matching text.	Nessun testo corrispondente.
+
+# Move Playhead to Cursor; EffectCraft handoff warnings
+	Move Playhead to Cursor	Sposta indicatore di riproduzione sul cursore
+	EffectCraft link — {warning}	Collegamento EffectCraft — {warning}

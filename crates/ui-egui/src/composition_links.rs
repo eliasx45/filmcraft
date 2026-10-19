@@ -204,6 +204,9 @@ pub fn hint(app: &FilmcraftApp) -> Option<String> {
                 .collect(),
         );
     }
+    if let Some(warning) = states.values().find_map(|v| v["warning"].as_str()) {
+        return Some(tlf!("EffectCraft link — {warning}", warning = warning).chars().take(180).collect());
+    }
     if states.values().any(|v| v["state"] == "updating" || v["state"] == "baking") {
         return Some(tl!("Updating EffectCraft links — showing the last completed picture").into());
     }
@@ -254,6 +257,9 @@ fn manager(app: &mut FilmcraftApp, ctx: &egui::Context) {
                 app.auto.add_response(&format!("effectcraftLinks.{}.status", item.0), &response, state);
                 if let Some(error) = status.and_then(|v| v["error"].as_str()) {
                     ui.colored_label(egui::Color32::LIGHT_RED, error);
+                }
+                if let Some(warning) = status.and_then(|v| v["warning"].as_str()) {
+                    ui.colored_label(egui::Color32::from_rgb(240, 190, 80), warning);
                 }
                 ui.small(&link.project_path);
                 ui.horizontal(|ui| {

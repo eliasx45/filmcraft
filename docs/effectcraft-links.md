@@ -72,9 +72,11 @@ manually.
 - Saved edits only; no updates from unsaved EffectCraft state and no real-time playback guarantee.
 - Linked rendering currently caches the whole composition. Long compositions cost more time and disk.
 - Visual-only handoff. Audio synchronization and audio editing are separate features.
-- Conversion warnings/missing media abort replacement. Unsupported effects, masks, graphics,
-  multicam, variable-speed animation, footage reinterpretation, and transitions touching selected
-  clips need an appropriate render/conversion first. Intervening unselected video clips must be
+- Conversion warnings/missing media abort replacement. Clip effects other than Motion, Opacity and
+  speed, and effect masks, are left out (EffectCraft can't import them yet): the replacement shows
+  a warning naming them, in the status bar and in EffectCraft Links. Graphics, multicam,
+  variable-speed animation, footage reinterpretation, and transitions touching selected clips need
+  an appropriate render/conversion first. Intervening unselected video clips must be
   included when needed to preserve stacking order.
 - Paths are absolute. Moving projects requires Relink; packaging both projects and their assets is
   separate from linking. The source dependency scan conservatively watches all footage/proxies.

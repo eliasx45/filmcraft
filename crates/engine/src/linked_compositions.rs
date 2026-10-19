@@ -249,7 +249,10 @@ pub fn poll(s: &mut Session) {
                             s.links.bakes.retain(|i| *i != id);
                         }
                         let state = if s.links.bakes.contains(&id) { "baking" } else { "ready" };
-                        let status = json!({"state":state,"item":id.0,"path":cache.path});
+                        let mut status = json!({"state":state,"item":id.0,"path":cache.path});
+                        if let Some(warning) = request.replacement.as_ref().and_then(|plan| plan.warning()) {
+                            status["warning"] = json!(warning);
+                        }
                         s.links.status.insert(format!("item:{}", id.0), status.clone());
                         s.links.status.insert(state_key, status);
                     }
@@ -450,6 +453,7 @@ pub fn commands() -> Vec<CommandSpec> {
                 return Err(bad("link.replace", "too many pending imports"));
             }
             let plan = Arc::new(crate::linked_handoff::Plan::prepare(s)?);
+            let warning = plan.warning();
             let ticket = s.links.next_ticket;
             s.links.next_ticket = ticket.checked_add(1).ok_or_else(|| EngineError::Other("link request ids exhausted".into()))?;
             s.links.imports.push(Request {
@@ -463,7 +467,7 @@ pub fn commands() -> Vec<CommandSpec> {
             });
             s.links.next_scan = Instant::now();
             poll(s);
-            Ok(json!({"request":ticket,"originalClipsRetainedUntilReady":true}))
+            Ok(json!({"request":ticket,"originalClipsRetainedUntilReady":true,"warning":warning}))
         }),
         spec("link.status", "Composition Link Status", &[], "{}", |s, _| {
             poll(s);
