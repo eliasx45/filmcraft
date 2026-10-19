@@ -86,6 +86,9 @@ fn replace_menu_keeps_original_until_link_is_ready() {
     let media = session.execute("file.newColorMatte", json!({"color":"#ff8000","width":64,"height":64,"seconds":0.25})).unwrap();
     session.execute("file.newSequence", json!({"fromItem":media["item"],"name":"Link workflow"})).unwrap();
     let clip = session.active_sequence().unwrap().video_tracks[0].items[0].id;
+    // a transition on the clip's edge is removed with the replacement
+    session.execute("sequence.applyVideoTransition", json!({"clip":clip.0,"frames":2,"edge":"in"})).unwrap();
+    assert_eq!(session.active_sequence().unwrap().video_tracks[0].transitions.len(), 1);
     session.state.selection = vec![clip];
     let original = session.project.clone();
     let (tx, rx) = mpsc::channel();
@@ -108,6 +111,7 @@ fn replace_menu_keeps_original_until_link_is_ready() {
         std::thread::sleep(std::time::Duration::from_millis(10));
     }
     assert!(destination.exists());
+    assert!(driver.harness.state().session.active_sequence().unwrap().video_tracks.iter().all(|t| t.transitions.is_empty()));
     let session = &driver.harness.state().session;
     let clip = session
         .active_sequence()
@@ -171,15 +175,8 @@ fn a_refused_replace_explains_itself_in_a_dialog() {
     let (tx, rx) = mpsc::channel();
     let mut session = Session::default();
     session.execute("file.openDemoProject", json!({})).unwrap();
-    // a clip a transition touches: the handoff refuses it
-    let clip = session
-        .active_sequence()
-        .unwrap()
-        .video_tracks
-        .iter()
-        .find_map(|t| t.transitions.iter().find_map(|tr| tr.to.and_then(|id| t.items.iter().find(|c| c.id == id))).map(|c| (c.id, c.name.clone())))
-        .unwrap();
-    session.state.selection = vec![clip.0];
+    // nothing selected: the handoff refuses
+    session.state.selection.clear();
     let app = FilmcraftApp::new(session).with_control(rx);
     let harness = Harness::builder().with_size(egui::vec2(1280.0, 800.0)).with_max_steps(10000).build_eframe(move |_| app);
     let mut driver = Driver { harness, tx };
@@ -190,7 +187,7 @@ fn a_refused_replace_explains_itself_in_a_dialog() {
     }
     assert_eq!(reply.try_recv().unwrap()["ok"], false);
     let shown = driver.harness.state().auto.find("effectcraftReplace.refused").expect("refusal dialog");
-    assert!(shown.label.contains(&clip.1) && shown.label.contains("transition"), "{}", shown.label);
+    assert!(shown.label.contains("select between 1 and 256 video clips"), "{}", shown.label);
     driver.call("ui.click", json!({"id":"effectcraftReplace.ok"}));
     assert!(driver.harness.state().auto.find("effectcraftReplace.refused").is_none());
 }

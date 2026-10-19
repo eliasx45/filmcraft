@@ -20,6 +20,8 @@ pub struct Plan {
     duration: Tick,
     /// Clip effects (and effect masks) left out of the handoff: EffectCraft can't import them yet.
     pub dropped: Vec<String>,
+    /// Transitions on the selected clips' edges, removed with the replacement.
+    pub transitions_removed: Vec<String>,
 }
 
 impl Plan {
@@ -36,6 +38,7 @@ impl Plan {
         if selected.is_empty() || selected.len() > 256 {
             return Err(fail("select between 1 and 256 video clips"));
         }
+        let mut removed_transitions: Vec<String> = Vec::new();
         let mut start = Tick::MAX;
         let mut end = Tick::ZERO;
         let mut first_track = usize::MAX;
@@ -45,12 +48,12 @@ impl Plan {
                 if track.locked || !track.enabled || track.muted {
                     return Err(fail("selected video tracks must be enabled and unlocked"));
                 }
-                if let Some(t) = track.transitions.iter().find(|t| t.from == Some(clip.id) || t.to == Some(clip.id)) {
-                    let transition = t.effect.def().map_or_else(|| t.effect.effect.clone(), |d| d.name.to_string());
-                    return Err(fail(&format!(
-                        "\"{}\" touches a {transition} transition. Remove the transition first, or select clips without transitions.",
-                        clip.name
-                    )));
+                // Transitions on the selected clips' edges are removed with the replacement (one undo step).
+                for t in track.transitions.iter().filter(|t| t.from == Some(clip.id) || t.to == Some(clip.id)) {
+                    let name = format!("{} transition", t.effect.def().map_or_else(|| t.effect.effect.clone(), |d| d.name.to_string()));
+                    if !removed_transitions.contains(&name) {
+                        removed_transitions.push(name);
+                    }
                 }
                 start = start.min(clip.start);
                 end = end.max(clip.end());
@@ -88,6 +91,7 @@ impl Plan {
         fragment = crate::project_tools::project_subset(&fragment, &keep);
         let dependencies = keep.iter().filter(|id| **id != sequence).filter_map(|id| session.project.item(*id).map(|item| (*id, item.clone()))).collect();
         let mut dropped: Vec<String> = Vec::new();
+        let transitions_removed = removed_transitions;
         for (id, item) in &mut fragment.items {
             if session.project.linked_compositions.get(id).is_some_and(|link| !link.baked) {
                 return Err(fail("bake existing composition links before sending them to another composition"));
@@ -148,12 +152,30 @@ impl Plan {
             }
         }
         fragment.linked_compositions.clear();
-        Ok(Self { sequence, original: original.clone(), dependencies, fragment: Arc::new(fragment), selected, target, start, duration, dropped })
+        Ok(Self {
+            sequence,
+            original: original.clone(),
+            dependencies,
+            fragment: Arc::new(fragment),
+            selected,
+            target,
+            start,
+            duration,
+            dropped,
+            transitions_removed,
+        })
     }
 
     /// The warning for effects left out of the handoff, if any.
     pub fn warning(&self) -> Option<String> {
-        (!self.dropped.is_empty()).then(|| format!("not sent to EffectCraft (it can't import them yet): {}", self.dropped.join(", ")))
+        let mut parts = Vec::new();
+        if !self.dropped.is_empty() {
+            parts.push(format!("not sent to EffectCraft (it can't import them yet): {}", self.dropped.join(", ")));
+        }
+        if !self.transitions_removed.is_empty() {
+            parts.push(format!("removed: {}", self.transitions_removed.join(", ")));
+        }
+        (!parts.is_empty()).then(|| parts.join("; "))
     }
 
     pub fn is_current(&self, project: &Project) -> bool {
@@ -214,6 +236,7 @@ impl Plan {
             let seq = project.sequence_mut(self.sequence).ok_or(EngineError::NoSequence)?;
             for track in &mut seq.video_tracks {
                 track.items.retain(|c| !self.selected.contains(&c.id));
+                track.transitions.retain(|t| !t.from.is_some_and(|id| self.selected.contains(&id)) && !t.to.is_some_and(|id| self.selected.contains(&id)));
             }
             let track = seq.track_mut(self.target).ok_or_else(|| EngineError::Other("replacement track is missing".into()))?;
             track.items.push(replacement);
@@ -261,6 +284,25 @@ mod tests {
         assert!(!effects.contains(&"drop_shadow") && effects.contains(&"motion"), "{effects:?}");
         // the FilmCraft timeline itself keeps the effect until the replacement lands
         assert!(session.active_sequence().unwrap().video_tracks.iter().flat_map(|t| &t.items).any(|c| c.id == clip && c.effect("drop_shadow").is_some()));
+    }
+
+    #[test]
+    fn transitions_on_the_selected_clips_are_named_for_removal() {
+        let mut session = Session::default();
+        session.execute("file.openDemoProject", json!({})).unwrap();
+        let clip = session
+            .active_sequence()
+            .unwrap()
+            .video_tracks
+            .iter()
+            .find_map(|t| t.transitions.iter().find(|tr| tr.effect.effect == "push").and_then(|tr| tr.to))
+            .unwrap();
+        session.state.selection = vec![clip];
+        let plan = Plan::prepare(&session).unwrap();
+        assert_eq!(plan.transitions_removed, ["Push transition"]);
+        assert!(plan.warning().unwrap().contains("removed: Push transition"));
+        // the timeline keeps it until the replacement lands
+        assert!(session.active_sequence().unwrap().video_tracks.iter().any(|t| t.transitions.iter().any(|tr| tr.to == Some(clip))));
     }
 
     #[test]

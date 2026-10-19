@@ -74,9 +74,10 @@ manually.
 - Visual-only handoff. Audio synchronization and audio editing are separate features.
 - Conversion warnings/missing media abort replacement. Clip effects other than Motion, Opacity and
   speed, and effect masks, are left out (EffectCraft can't import them yet): the replacement shows
-  a warning naming them, in the status bar and in EffectCraft Links. Graphics, multicam,
-  variable-speed animation, footage reinterpretation, and transitions touching selected clips need
-  an appropriate render/conversion first. Intervening unselected video clips must be
+  a warning naming them, in the status bar and in EffectCraft Links. Transitions on the selected
+  clips' edges are removed with the replacement (the same Undo brings them back), also named in the
+  warning. Graphics, multicam, variable-speed animation and footage reinterpretation need an
+  appropriate render/conversion first; a refusal is explained in a dialog. Intervening unselected video clips must be
   included when needed to preserve stacking order.
 - Paths are absolute. Moving projects requires Relink; packaging both projects and their assets is
   separate from linking. The source dependency scan conservatively watches all footage/proxies.
