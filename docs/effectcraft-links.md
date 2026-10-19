@@ -76,7 +76,10 @@ manually.
   speed, and effect masks, are left out (EffectCraft can't import them yet): the replacement shows
   a warning naming them, in the status bar and in EffectCraft Links. Transitions on the selected
   clips' edges are removed with the replacement (the same Undo brings them back), also named in the
-  warning. Graphics, multicam, variable-speed animation and footage reinterpretation need an
+  warning. Generated footage other than colour mattes and black video (the demo clips, bars and
+  tone) is refused before anything reaches EffectCraft. An import EffectCraft refuses is undone
+  there and the composition that was open comes back. Graphics, multicam, variable-speed
+  animation and footage reinterpretation need an
   appropriate render/conversion first; a refusal is explained in a dialog. Intervening unselected video clips must be
   included when needed to preserve stacking order.
 - Paths are absolute. Moving projects requires Relink; packaging both projects and their assets is

@@ -133,6 +133,17 @@ impl Plan {
                     }
                 }
                 ItemKind::Media(media) => {
+                    // EffectCraft makes solids of colour mattes and black video; other generated
+                    // footage (the demo clips, bars, tone) would land as grey solids.
+                    if let MediaRef::Generator(generator) = &media.media
+                        && !matches!(generator, filmcraft_media::Generator::ColorMatte { .. } | filmcraft_media::Generator::BlackVideo)
+                    {
+                        return Err(fail(&format!(
+                            "\"{}\" is generated footage ({}), which EffectCraft can't import yet. Use clips from real video files.",
+                            item.name,
+                            generator.label()
+                        )));
+                    }
                     if media.offline || media.interpret != Default::default() {
                         return Err(fail("offline or reinterpreted footage needs to be resolved before replacement"));
                     }
@@ -270,12 +281,20 @@ mod tests {
         }
     }
 
+    /// A sequence of one colour-matte clip (EffectCraft imports it as a solid), selected.
+    fn matte_clip(session: &mut Session) -> filmcraft_project::ClipId {
+        let result = session.execute("file.newColorMatte", json!({"color":"#ff8000","width":64,"height":64,"seconds":0.5})).unwrap();
+        session.execute("file.newSequence", json!({"fromItem":result["item"]})).unwrap();
+        let clip = session.active_sequence().unwrap().video_tracks[0].items[0].id;
+        session.state.selection = vec![clip];
+        clip
+    }
+
     #[test]
     fn clip_effects_are_left_out_of_the_handoff_with_a_warning() {
         let mut session = Session::default();
-        session.execute("file.openDemoProject", json!({})).unwrap();
-        let clip = session.active_sequence().unwrap().video_tracks.iter().flat_map(|t| &t.items).find(|c| c.effect("drop_shadow").is_some()).unwrap().id;
-        session.state.selection = vec![clip];
+        let clip = matte_clip(&mut session);
+        session.execute("effects.apply", json!({"clips": [clip.0], "effect": "drop_shadow"})).unwrap();
         let plan = Plan::prepare(&session).unwrap();
         assert_eq!(plan.dropped, ["Drop Shadow"]);
         assert!(plan.warning().unwrap().contains("Drop Shadow"));
@@ -289,20 +308,23 @@ mod tests {
     #[test]
     fn transitions_on_the_selected_clips_are_named_for_removal() {
         let mut session = Session::default();
-        session.execute("file.openDemoProject", json!({})).unwrap();
-        let clip = session
-            .active_sequence()
-            .unwrap()
-            .video_tracks
-            .iter()
-            .find_map(|t| t.transitions.iter().find(|tr| tr.effect.effect == "push").and_then(|tr| tr.to))
-            .unwrap();
-        session.state.selection = vec![clip];
+        let clip = matte_clip(&mut session);
+        session.execute("sequence.applyVideoTransition", json!({"clip": clip.0, "effect": "push", "frames": 2, "edge": "in"})).unwrap();
         let plan = Plan::prepare(&session).unwrap();
         assert_eq!(plan.transitions_removed, ["Push transition"]);
         assert!(plan.warning().unwrap().contains("removed: Push transition"));
         // the timeline keeps it until the replacement lands
         assert!(session.active_sequence().unwrap().video_tracks.iter().any(|t| t.transitions.iter().any(|tr| tr.to == Some(clip))));
+    }
+
+    #[test]
+    fn generated_demo_footage_is_refused_before_reaching_effectcraft() {
+        let mut session = Session::default();
+        session.execute("file.openDemoProject", json!({})).unwrap();
+        let clip = session.active_sequence().unwrap().video_tracks[0].items[0].id;
+        session.state.selection = vec![clip];
+        let error = Plan::prepare(&session).unwrap_err().to_string();
+        assert!(error.contains("generated footage") && error.contains("real video files"), "{error}");
     }
 
     #[test]

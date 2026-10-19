@@ -605,6 +605,8 @@ pub fn import_timeline_live(port: u16, bytes: &[u8], cancelled: &AtomicBool) -> 
         .filter(|p| !p.is_empty())
         .ok_or("the project open in EffectCraft has never been saved; save it there first (original clips kept)")?
         .to_owned();
+    // the composition the user has open, put back if the import is taken out again
+    let active = summary.get("activeComp").filter(|v| v.is_u64()).cloned();
     let parent = Path::new(&project).parent().ok_or("EffectCraft project needs a parent folder")?;
     let dir = fresh_cache_dir(&parent.join(".filmcraft-handoff"))?;
     let result = (|| {
@@ -617,6 +619,9 @@ pub fn import_timeline_live(port: u16, bytes: &[u8], cancelled: &AtomicBool) -> 
                 // Take the half-made composition back out; `expectRevision` keeps a later user edit safe.
                 if let Some(revision) = control.execute("project.summary", serde_json::json!({})).ok().and_then(|s| s.get("revision").cloned()) {
                     let _ = control.execute("edit.undo", serde_json::json!({"expectRevision": revision}));
+                }
+                if let Some(comp) = &active {
+                    let _ = control.execute("comp.open", serde_json::json!({"comp": comp}));
                 }
                 return Err(refused.err().unwrap_or_else(|| "EffectCraft handoff cancelled; original clips kept".into()));
             }
@@ -789,7 +794,7 @@ mod live_handoff_tests {
                     }
                     log.lock().unwrap().push(params.clone());
                     let result = match command.as_str() {
-                        "project.summary" => serde_json::json!({"path": project, "revision": 7}),
+                        "project.summary" => serde_json::json!({"path": project, "revision": 7, "activeComp": 5}),
                         "file.importTimeline" => import.clone(),
                         "file.save" => {
                             let path = project.clone().unwrap();
@@ -852,8 +857,11 @@ mod live_handoff_tests {
         let (port, seen) = fake_effectcraft(Some(project.clone()), import);
         let error = import_timeline_live(port, b"{}", &AtomicBool::new(false)).unwrap_err();
         assert!(error.contains("unsupported transition"), "{error}");
-        assert_eq!(commands(&seen), ["project.summary", "file.importTimeline", "project.summary", "edit.undo"]);
-        assert_eq!(seen.lock().unwrap().last().unwrap()["params"]["expectRevision"], 7);
+        assert_eq!(commands(&seen), ["project.summary", "file.importTimeline", "project.summary", "edit.undo", "comp.open"]);
+        let seen = seen.lock().unwrap();
+        assert_eq!(seen[3]["params"]["expectRevision"], 7);
+        // the composition the user had open comes back
+        assert_eq!(seen[4]["params"]["comp"], 5);
         assert!(!project.exists());
     }
 
