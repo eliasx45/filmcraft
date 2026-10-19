@@ -233,8 +233,11 @@ impl Pen16<'_> {
     }
 }
 
-/// Paint `icon` centred in `rect`.
+/// Paint `icon` centred in `rect` (owner-local artwork when present, see `owner_icons`).
 pub fn paint(painter: &Painter, rect: Rect, icon: Icon, color: Color32) {
+    if crate::owner_icons::paint(painter, rect, icon, color) {
+        return;
+    }
     let pen = Pen16 { painter, rect, color, width: 1.25 };
     use Icon::*;
     match icon {

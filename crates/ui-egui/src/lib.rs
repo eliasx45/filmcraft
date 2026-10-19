@@ -49,6 +49,7 @@ pub mod icons;
 pub mod links;
 pub mod menus;
 pub mod native_dialogs;
+mod owner_icons;
 pub mod panels;
 pub mod perf;
 #[cfg(not(target_arch = "wasm32"))]
