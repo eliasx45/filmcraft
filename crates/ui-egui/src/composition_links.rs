@@ -40,7 +40,40 @@ pub fn open(app: &FilmcraftApp, ctx: &egui::Context, relink: bool) -> Result<Val
     Ok(json!({"dialog":"effectcraftLink"}))
 }
 
+fn refusal_id() -> egui::Id {
+    egui::Id::new("effectcraft-replace-refused")
+}
+
+/// Shows why Replace with EffectCraft Composition didn't start, in a dialog (the status bar
+/// line was easy to miss).
+pub fn refuse(ctx: &egui::Context, message: &str) {
+    ctx.data_mut(|m| m.insert_temp(refusal_id(), Some(message.to_string())));
+}
+
+fn refusal(app: &mut FilmcraftApp, ctx: &egui::Context) {
+    let Some(Some(message)) = ctx.data(|m| m.get_temp::<Option<String>>(refusal_id())) else { return };
+    let message = message.strip_prefix("Replace with EffectCraft Composition: ").unwrap_or(&message).to_string();
+    let mut close = false;
+    let modal = egui::Modal::new(refusal_id()).show(ctx, |ui| {
+        ui.set_width(420.0);
+        ui.heading(tl!("Replace with EffectCraft Composition"));
+        ui.add_space(8.0);
+        let label = ui.label(&message);
+        app.auto.add_response("effectcraftReplace.refused", &label, &message);
+        ui.add_space(12.0);
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            let ok = ui.button(tl!("OK"));
+            app.auto.add_response("effectcraftReplace.ok", &ok, "Close");
+            close |= ok.clicked();
+        });
+    });
+    if close || modal.should_close() {
+        ctx.data_mut(|m| m.insert_temp::<Option<String>>(refusal_id(), None));
+    }
+}
+
 pub fn show(app: &mut FilmcraftApp, ctx: &egui::Context) {
+    refusal(app, ctx);
     manager(app, ctx);
     let Some(Some(mut draft)) = ctx.data(|m| m.get_temp::<Option<Draft>>(draft_id())) else { return };
     if draft.document_generation != app.session.links.document_generation

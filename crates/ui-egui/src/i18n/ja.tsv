@@ -3666,3 +3666,4 @@
 # Move Playhead to Cursor; EffectCraft handoff warnings
 	Move Playhead to Cursor	再生ヘッドをカーソル位置に移動
 	EffectCraft link — {warning}	EffectCraft リンク — {warning}
+	Replace with EffectCraft Composition	EffectCraft コンポジションに置き換え

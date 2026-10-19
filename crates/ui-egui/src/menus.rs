@@ -597,12 +597,17 @@ pub fn invoke(app: &mut FilmcraftApp, ctx: &egui::Context, id: &str, mut params:
     }
     #[cfg(not(target_arch = "wasm32"))]
     if id == "link.replace" && params.get("path").is_none() && params.get("open").is_none() {
-        filmcraft_engine::linked_handoff::Plan::prepare(&app.session).map_err(|e| e.to_string())?;
+        if let Err(e) = filmcraft_engine::linked_handoff::Plan::prepare(&app.session) {
+            crate::composition_links::refuse(ctx, &e.to_string());
+            return Err(e.to_string());
+        }
         // As Premiere does with After Effects: a new composition in the project open in
         // EffectCraft when it has a saved one, else a new project file.
-        let port = filmcraft_engine::linked_render::effectcraft_control_port();
-        if filmcraft_engine::linked_render::open_effectcraft_project(port).is_some() {
-            let result = app.session.execute("link.replace", json!({"open": true, "port": port})).map_err(|e| e.to_string())?;
+        if let Some(port) = app.hooks.effectcraft_open_project.as_mut().and_then(|probe| probe()) {
+            let result = app.session.execute("link.replace", json!({"open": true, "port": port})).map_err(|e| {
+                crate::composition_links::refuse(ctx, &e.to_string());
+                e.to_string()
+            })?;
             crate::composition_links::open_manager(ctx);
             return Ok(result);
         }

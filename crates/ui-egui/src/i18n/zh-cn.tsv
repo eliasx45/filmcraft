@@ -3642,3 +3642,4 @@
 # Move Playhead to Cursor; EffectCraft handoff warnings
 	Move Playhead to Cursor	将播放指示器移到光标处
 	EffectCraft link — {warning}	EffectCraft 链接 — {warning}
+	Replace with EffectCraft Composition	替换为 EffectCraft 合成

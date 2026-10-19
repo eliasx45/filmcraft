@@ -3618,3 +3618,4 @@
 # Move Playhead to Cursor; EffectCraft handoff warnings
 	Move Playhead to Cursor	재생 헤드를 커서로 이동
 	EffectCraft link — {warning}	EffectCraft 링크 — {warning}
+	Replace with EffectCraft Composition	EffectCraft 컴포지션으로 바꾸기

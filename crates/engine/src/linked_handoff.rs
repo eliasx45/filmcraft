@@ -45,8 +45,12 @@ impl Plan {
                 if track.locked || !track.enabled || track.muted {
                     return Err(fail("selected video tracks must be enabled and unlocked"));
                 }
-                if track.transitions.iter().any(|t| t.from.is_some_and(|id| selected.contains(&id)) || t.to.is_some_and(|id| selected.contains(&id))) {
-                    return Err(fail("remove transitions touching the selected clips before replacement"));
+                if let Some(t) = track.transitions.iter().find(|t| t.from == Some(clip.id) || t.to == Some(clip.id)) {
+                    let transition = t.effect.def().map_or_else(|| t.effect.effect.clone(), |d| d.name.to_string());
+                    return Err(fail(&format!(
+                        "\"{}\" touches a {transition} transition. Remove the transition first, or select clips without transitions.",
+                        clip.name
+                    )));
                 }
                 start = start.min(clip.start);
                 end = end.max(clip.end());

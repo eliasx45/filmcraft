@@ -173,6 +173,11 @@ pub struct HostHooks {
     /// whose Wayland compositor sends no theme to winit). Without it, or without an answer, Auto
     /// uses `egui::Context::system_theme`.
     pub system_theme: Option<SystemThemeFn>,
+    /// The control port of a running EffectCraft with a saved project open, for Replace with
+    /// EffectCraft Composition into that project (as Premiere with After Effects). Only the
+    /// desktop app sets it: without it (tests, the web) Replace always asks for a new file, so
+    /// nothing but a real launch can reach the user's EffectCraft.
+    pub effectcraft_open_project: Option<Box<dyn FnMut() -> Option<u16>>>,
     /// Files or an image on the system clipboard, for Paste in the Timeline and the Project panel
     /// (#611). Without it Paste only pastes clips copied in FilmCraft.
     pub clipboard_media: Option<Box<dyn FnMut() -> Option<ClipboardMedia>>>,

@@ -165,3 +165,93 @@ fn replace_menu_keeps_original_until_link_is_ready() {
     assert_eq!(driver.harness.state().session.project, original);
     assert!(destination.exists());
 }
+
+#[test]
+fn a_refused_replace_explains_itself_in_a_dialog() {
+    let (tx, rx) = mpsc::channel();
+    let mut session = Session::default();
+    session.execute("file.openDemoProject", json!({})).unwrap();
+    // a clip a transition touches: the handoff refuses it
+    let clip = session
+        .active_sequence()
+        .unwrap()
+        .video_tracks
+        .iter()
+        .find_map(|t| t.transitions.iter().find_map(|tr| tr.to.and_then(|id| t.items.iter().find(|c| c.id == id))).map(|c| (c.id, c.name.clone())))
+        .unwrap();
+    session.state.selection = vec![clip.0];
+    let app = FilmcraftApp::new(session).with_control(rx);
+    let harness = Harness::builder().with_size(egui::vec2(1280.0, 800.0)).with_max_steps(10000).build_eframe(move |_| app);
+    let mut driver = Driver { harness, tx };
+    let (request, reply) = ControlRequest::new("ui.menu.invoke", json!({"id":"link.replace","params":{}}));
+    driver.tx.send(request).unwrap();
+    for _ in 0..20 {
+        driver.step();
+    }
+    assert_eq!(reply.try_recv().unwrap()["ok"], false);
+    let shown = driver.harness.state().auto.find("effectcraftReplace.refused").expect("refusal dialog");
+    assert!(shown.label.contains(&clip.1) && shown.label.contains("transition"), "{}", shown.label);
+    driver.call("ui.click", json!({"id":"effectcraftReplace.ok"}));
+    assert!(driver.harness.state().auto.find("effectcraftReplace.refused").is_none());
+}
+
+/// A stand-in EffectCraft control channel with a saved project open: imports make comp 42.
+fn fake_effectcraft(project: std::path::PathBuf) -> (u16, std::sync::Arc<std::sync::Mutex<Vec<String>>>) {
+    use std::io::{BufRead, BufReader, Write};
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let seen = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+    let log = seen.clone();
+    std::thread::spawn(move || {
+        for stream in listener.incoming() {
+            let Ok(stream) = stream else { return };
+            let mut writer = stream.try_clone().unwrap();
+            for line in BufReader::new(stream).lines() {
+                let Ok(line) = line else { break };
+                let request: Value = serde_json::from_str(&line).unwrap();
+                let command = request["params"]["command"].as_str().unwrap_or_default().to_string();
+                log.lock().unwrap().push(command.clone());
+                let result = match command.as_str() {
+                    "project.summary" => json!({"path": project, "revision": 1}),
+                    "file.importTimeline" => json!({"supportsSourceTimeKeys": true, "warnings": [], "missing": [], "comps": [42]}),
+                    "file.save" => {
+                        std::fs::write(&project, r#"{"schema":2,"items":{"42":{"name":"Comp","kind":{"type":"Comp"}}}}"#).unwrap();
+                        Value::Null
+                    }
+                    _ => Value::Null,
+                };
+                writeln!(writer, "{}", json!({"id": request["id"], "ok": true, "result": result})).unwrap();
+            }
+        }
+    });
+    (port, seen)
+}
+
+#[test]
+fn replace_goes_into_the_effectcraft_project_that_is_open_without_a_file_dialog() {
+    let root = std::path::PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join(format!("replace-open-{}", std::process::id()));
+    std::fs::create_dir_all(&root).unwrap();
+    let project = root.join("Open.ecproj");
+    let (port, seen) = fake_effectcraft(project.clone());
+    let mut session = Session::default();
+    let media = session.execute("file.newColorMatte", json!({"color":"#ff8000","width":64,"height":64,"seconds":0.25})).unwrap();
+    session.execute("file.newSequence", json!({"fromItem":media["item"]})).unwrap();
+    session.state.selection = vec![session.active_sequence().unwrap().video_tracks[0].items[0].id];
+    let (tx, rx) = mpsc::channel();
+    let mut app = FilmcraftApp::new(session).with_control(rx);
+    app.hooks.effectcraft_open_project = Some(Box::new(move || Some(port)));
+    app.hooks.pick_save_as = Some(Box::new(|_, _, _| panic!("no file dialog when EffectCraft has a project open")));
+    let harness = Harness::builder().with_size(egui::vec2(1280.0, 800.0)).with_max_steps(10000).build_eframe(move |_| app);
+    let mut driver = Driver { harness, tx };
+    let started = driver.call("ui.menu.invoke", json!({"id":"link.replace"}));
+    assert!(started["request"].is_u64(), "{started}");
+    // the import into the open project and its save happen in the background
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+    while !seen.lock().unwrap().iter().any(|c| c == "file.save") {
+        driver.step();
+        assert!(std::time::Instant::now() < deadline, "{:?}", seen.lock().unwrap());
+        std::thread::sleep(std::time::Duration::from_millis(5));
+    }
+    assert_eq!(*seen.lock().unwrap(), ["project.summary", "file.importTimeline", "file.save"]);
+    let _ = std::fs::remove_dir_all(root);
+}

@@ -252,6 +252,11 @@ fn app_creator(launch: Launch, graphics: graphics::GraphicsStart, created: Arc<A
             app.dialog = None;
         }
         app.integrated_titlebar = cfg!(target_os = "macos");
+        // Replace with EffectCraft Composition goes into the project open in EffectCraft.
+        app.hooks.effectcraft_open_project = Some(Box::new(|| {
+            let port = filmcraft_engine::linked_render::effectcraft_control_port();
+            filmcraft_engine::linked_render::open_effectcraft_project(port).map(|_| port)
+        }));
         if let Some(rs) = cc.wgpu_render_state.clone()
             && std::env::var_os("FILMCRAFT_CPU_COMPOSITE").is_none()
         {
