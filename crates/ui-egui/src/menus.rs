@@ -892,8 +892,8 @@ pub fn bindings(app: &FilmcraftApp) -> Vec<KeyBinding> {
     // shortcuts, so the interface grew and could not shrink back (#2253).
     let plus: Vec<KeyBinding> = v
         .iter()
-        .filter(|(m, k, _, p)| *k == egui::Key::Equals && !v.iter().any(|(m2, k2, _, p2)| *k2 == egui::Key::Plus && m2 == m && p2 == p))
-        .map(|(m, _, id, p)| (*m, egui::Key::Plus, id.clone(), p.clone()))
+        .filter(|(m, k, _, p, _)| *k == egui::Key::Equals && !v.iter().any(|(m2, k2, _, p2, _)| *k2 == egui::Key::Plus && m2 == m && p2 == p))
+        .map(|(m, _, id, p, physical)| (*m, egui::Key::Plus, id.clone(), p.clone(), *physical))
         .collect();
     v.extend(plus);
     v.sort_by_key(|(m, ..)| std::cmp::Reverse(specificity(*m)));
