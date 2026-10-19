@@ -56,6 +56,7 @@ pub const UI_COMMANDS: &[UiCommand] = &[
     uic!("view.zoomOut", "Zoom Out", ["View"], Some("-")),
     uic!("view.zoomToSequence", "Zoom to Sequence", ["View"], Some("\\")),
     uic!("view.resetInterfaceZoom", "Reset Interface Zoom", ["View"], None),
+    uic!("timeline.playheadToCursor", "Move Playhead to Cursor", [], None),
     uic!("view.playbackRes.full", "Full", ["View", "Playback Resolution"], None),
     uic!("view.playbackRes.half", "1/2", ["View", "Playback Resolution"], None),
     uic!("view.playbackRes.quarter", "1/4", ["View", "Playback Resolution"], None),
@@ -415,6 +416,11 @@ pub fn invoke(app: &mut FilmcraftApp, ctx: &egui::Context, id: &str, mut params:
             let ph = app.session.playhead().seconds();
             crate::panels::timeline::zoom_about(&mut app.ui.timeline, f, ph, app.last_timeline_width);
             return Ok(Value::Null);
+        }
+        "timeline.playheadToCursor" => {
+            let pos = ctx.input(|i| i.pointer.latest_pos());
+            let moved = pos.is_some_and(|p| crate::panels::timeline::playhead_to_pointer(app, p));
+            return Ok(json!({"moved": moved}));
         }
         "view.zoomToSequence" => {
             app.ui.timeline.fit_pending = true;

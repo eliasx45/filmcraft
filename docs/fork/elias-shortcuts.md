@@ -12,14 +12,13 @@ letter shortcuts remain logical. The Windows build has not been exercised on a
 physical Windows keyboard. On QWERTY these positional shortcuts keep their positions,
 not their AZERTY printed labels.
 
-269 mapped source bindings (plus a Mac ISO-key alias). The following 40 assigned source entries are not translated because the target command/context is not exposed, or the workspace identity is unknown. Unassigned source entries are ignored. Existing defaults for unmapped commands remain available.
+270 mapped source bindings (plus a Mac ISO-key alias). The following 39 assigned source entries are not translated because the target command/context is not exposed, or the workspace identity is unknown. Unassigned source entries are ignored. Existing defaults for unmapped commands remain available.
 
 - `context.audiomixer` / `cmd.audiomixer.meterinput`
 - `context.audiomixer` / `cmd.audiomixer.showhidetracks`
 - `context.effects` / `cmd.effects.createcustomfolder`
 - `context.timeline` / `cmd.timeline.pasteinsert.to.same.track`
 - `context.timeline` / `cmd.timeline.paste.to.same.track`
-- `context.timeline` / `cmd.timeline.move.cti.to.cursor`
 - `context.timeline` / `cmd.timeline.workbar.set.out`
 - `context.timeline` / `cmd.timeline.workbar.set.in`
 - `context.prproduction` / `cmd.prproductionfolder.move.home`

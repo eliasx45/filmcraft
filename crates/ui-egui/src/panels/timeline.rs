@@ -2239,6 +2239,24 @@ pub(crate) fn wheel_input(ctx: &egui::Context) -> WheelInput {
     })
 }
 
+/// Move Playhead to Cursor: the playhead goes to the frame under the pointer when the pointer is
+/// over the Timeline's ruler or tracks, snapping like a ruler press. Returns whether it moved.
+pub fn playhead_to_pointer(app: &mut FilmcraftApp, p: Pos2) -> bool {
+    let Some(layout) = app.tl.layout.clone() else { return false };
+    let over = layout.content.min.x <= p.x && p.x < layout.content.max.x && layout.ruler.min.y <= p.y && p.y < layout.content.max.y;
+    let Some(seq) = app.session.active_sequence().cloned() else { return false };
+    if !over || !layout.pps.is_finite() || layout.pps <= 0.0 {
+        return false;
+    }
+    app.stop();
+    let mut tt = seq.settings.frame_rate.snap_nearest(layout.tick_at(p.x).max(Tick::ZERO));
+    if app.session.prefs.timeline.snap_playhead {
+        tt = snap_playhead(app, &seq, &layout, tt);
+    }
+    app.session.set_playhead(tt);
+    true
+}
+
 /// Puts the playhead where the pointer is on the ruler: what a press does before any drag (#1090).
 fn scrub_playhead(app: &mut FilmcraftApp, seq: &Sequence, layout: &Layout, p: Pos2, shift: bool) {
     app.stop();

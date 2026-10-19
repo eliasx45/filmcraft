@@ -465,6 +465,7 @@ pub const ELIAS: &[Entry] = &[
     ("playback.loop", "Cmd+L", "Metadata"),
     ("playback.toggle", "Space", "Metadata"),
     ("edit.clear", "Backspace", "Effects"),
+    ("timeline.playheadToCursor", "R", "Timeline"),
     ("timeline.slideRight", "Alt+;", "Timeline"),
     ("timeline.slipLeft5", "Cmd+Alt+Shift+Left", "Timeline"),
     ("edit.rippleDelete", "Alt+Backspace", "Timeline"),
