@@ -478,6 +478,25 @@ pub fn compositions(path: &Path) -> Result<Vec<CompositionChoice>, String> {
 
 /// Convert an interchange selection into a new editable project. Publication uses a hard link
 /// so an existing destination can never be overwritten, including a file created during import.
+/// The one top-level composition `file.importTimeline` made, refusing a renderer too old for
+/// trimmed animation or an import with warnings or missing media.
+fn imported_composition(result: &Value) -> Result<u64, String> {
+    if result.get("supportsSourceTimeKeys").and_then(Value::as_bool) != Some(true) {
+        return Err("EffectCraft renderer is too old for accurate trimmed animation handoff; update it (original clips kept)".into());
+    }
+    for field in ["warnings", "missing"] {
+        let entries = result.get(field).and_then(Value::as_array).ok_or_else(|| format!("EffectCraft import response missing {field}; update renderer"))?;
+        if !entries.is_empty() {
+            return Err(format!("EffectCraft import reported {field}: {}; original clips kept", Value::Array(entries.clone())));
+        }
+    }
+    let comps = result.get("comps").and_then(Value::as_array).ok_or("EffectCraft import returned no composition list")?;
+    if comps.len() != 1 {
+        return Err("EffectCraft import must return one top-level composition".into());
+    }
+    comps.first().and_then(Value::as_u64).ok_or_else(|| "invalid imported composition id".to_string())
+}
+
 pub fn import_timeline(executable: &Path, bytes: &[u8], destination: &Path, cancelled: &AtomicBool) -> Result<LinkedComposition, String> {
     if destination.exists() {
         return Err("EffectCraft destination already exists; choose a new project filename".into());
@@ -506,26 +525,106 @@ pub fn import_timeline(executable: &Path, bytes: &[u8], destination: &Path, canc
             .and_then(|results| results.iter().find(|entry| entry.get("command").and_then(Value::as_str) == Some("file.importTimeline")))
             .and_then(|entry| entry.get("result"))
             .ok_or("EffectCraft returned no timeline import result")?;
-        if result.get("supportsSourceTimeKeys").and_then(Value::as_bool) != Some(true) {
-            return Err("EffectCraft renderer is too old for accurate trimmed animation handoff; update it (original clips kept)".into());
-        }
-        for field in ["warnings", "missing"] {
-            let entries = result.get(field).and_then(Value::as_array).ok_or_else(|| format!("EffectCraft import response missing {field}; update renderer"))?;
-            if !entries.is_empty() {
-                return Err(format!("EffectCraft import reported {field}: {}; original clips kept", Value::Array(entries.clone())));
-            }
-        }
-        let comps = result.get("comps").and_then(Value::as_array).ok_or("EffectCraft import returned no composition list")?;
-        if comps.len() != 1 {
-            return Err("EffectCraft import must return one top-level composition".into());
-        }
-        let composition_id = comps.first().and_then(Value::as_u64).ok_or("invalid imported composition id")?;
+        let composition_id = imported_composition(result)?;
         source_version(&LinkedComposition { project_path: project.to_string_lossy().into_owned(), composition_id, baked: false })?;
         if cancelled.load(Ordering::Relaxed) {
             return Err("EffectCraft handoff cancelled; original clips kept".into());
         }
         std::fs::hard_link(&project, destination).map_err(|e| format!("could not publish {} without overwriting: {e}", destination.display()))?;
         Ok(LinkedComposition { project_path: destination.to_string_lossy().into_owned(), composition_id, baked: false })
+    })();
+    let _ = std::fs::remove_dir_all(&dir);
+    result
+}
+
+/// The running EffectCraft app's control port: `EFFECTCRAFT_CONTROL_PORT`, else its default 9877.
+pub fn effectcraft_control_port() -> u16 {
+    std::env::var("EFFECTCRAFT_CONTROL_PORT").ok().and_then(|v| v.trim().parse::<u16>().ok()).filter(|p| *p != 0).unwrap_or(9877)
+}
+
+/// One JSON-lines connection to a running EffectCraft's control channel (127.0.0.1 only).
+struct Control {
+    reader: std::io::BufReader<std::net::TcpStream>,
+    writer: std::net::TcpStream,
+    next_id: u64,
+}
+
+const MAX_REPLY_BYTES: u64 = 64 * 1024 * 1024;
+
+impl Control {
+    fn connect(port: u16, reply_timeout: Duration) -> Result<Self, String> {
+        let address = std::net::SocketAddr::from(([127, 0, 0, 1], port));
+        let stream =
+            std::net::TcpStream::connect_timeout(&address, Duration::from_millis(400)).map_err(|e| format!("EffectCraft is not open on port {port}: {e}"))?;
+        stream.set_read_timeout(Some(reply_timeout)).map_err(|e| e.to_string())?;
+        stream.set_write_timeout(Some(Duration::from_secs(5))).map_err(|e| e.to_string())?;
+        let writer = stream.try_clone().map_err(|e| e.to_string())?;
+        Ok(Self { reader: std::io::BufReader::new(stream), writer, next_id: 1 })
+    }
+
+    /// Runs one engine command in the open document and returns its result.
+    fn execute(&mut self, command: &str, params: Value) -> Result<Value, String> {
+        use std::io::{BufRead, Write};
+        let id = self.next_id;
+        self.next_id = self.next_id.saturating_add(1);
+        let request = serde_json::json!({"id": id, "method": "engine.execute", "params": {"command": command, "params": params}});
+        let mut line = request.to_string();
+        line.push('\n');
+        self.writer.write_all(line.as_bytes()).map_err(|e| format!("EffectCraft control: {e}"))?;
+        let mut reply = String::new();
+        (&mut self.reader).take(MAX_REPLY_BYTES).read_line(&mut reply).map_err(|e| format!("EffectCraft control: {e}"))?;
+        let reply: Value = serde_json::from_str(reply.trim()).map_err(|e| format!("EffectCraft control reply: {e}"))?;
+        if reply.get("id").and_then(Value::as_u64) != Some(id) {
+            return Err("EffectCraft control reply did not match the request".into());
+        }
+        if reply.get("ok").and_then(Value::as_bool) != Some(true) {
+            let error = reply.get("error").and_then(Value::as_str).unwrap_or("request failed");
+            return Err(format!("EffectCraft {command}: {error}"));
+        }
+        Ok(reply.get("result").cloned().unwrap_or(Value::Null))
+    }
+}
+
+/// The saved project open in the running EffectCraft, if any (After Effects-style handoff target).
+/// A quick probe: `None` when EffectCraft isn't running, doesn't answer, or its project is unsaved.
+pub fn open_effectcraft_project(port: u16) -> Option<String> {
+    let mut control = Control::connect(port, Duration::from_secs(2)).ok()?;
+    let summary = control.execute("project.summary", serde_json::json!({})).ok()?;
+    summary.get("path").and_then(Value::as_str).filter(|p| !p.is_empty() && p.to_ascii_lowercase().ends_with(".ecproj")).map(str::to_owned)
+}
+
+/// Replace with EffectCraft Composition into the project open in the running EffectCraft, as
+/// Premiere does with After Effects: the selection becomes a new composition there and the project
+/// is saved (the link renders from the saved file). A refused import is undone in EffectCraft.
+pub fn import_timeline_live(port: u16, bytes: &[u8], cancelled: &AtomicBool) -> Result<LinkedComposition, String> {
+    let mut control = Control::connect(port, Duration::from_secs(120))?;
+    let summary = control.execute("project.summary", serde_json::json!({}))?;
+    let project = summary
+        .get("path")
+        .and_then(Value::as_str)
+        .filter(|p| !p.is_empty())
+        .ok_or("the project open in EffectCraft has never been saved; save it there first (original clips kept)")?
+        .to_owned();
+    let parent = Path::new(&project).parent().ok_or("EffectCraft project needs a parent folder")?;
+    let dir = fresh_cache_dir(&parent.join(".filmcraft-handoff"))?;
+    let result = (|| {
+        let timeline = dir.join("selection.otio");
+        std::fs::write(&timeline, bytes).map_err(|e| e.to_string())?;
+        let result = control.execute("file.importTimeline", serde_json::json!({"path": timeline, "format": "otio"}))?;
+        let composition_id = match imported_composition(&result) {
+            Ok(id) if !cancelled.load(Ordering::Relaxed) => id,
+            refused => {
+                // Take the half-made composition back out; `expectRevision` keeps a later user edit safe.
+                if let Some(revision) = control.execute("project.summary", serde_json::json!({})).ok().and_then(|s| s.get("revision").cloned()) {
+                    let _ = control.execute("edit.undo", serde_json::json!({"expectRevision": revision}));
+                }
+                return Err(refused.err().unwrap_or_else(|| "EffectCraft handoff cancelled; original clips kept".into()));
+            }
+        };
+        control.execute("file.save", serde_json::json!({}))?;
+        let link = LinkedComposition { project_path: project.clone(), composition_id, baked: false };
+        source_version(&link)?;
+        Ok(link)
     })();
     let _ = std::fs::remove_dir_all(&dir);
     result
@@ -659,4 +758,111 @@ fn check_renderer(executable: &Path, root: &Path, cancelled: &AtomicBool) -> Res
 
 pub(crate) fn cache_is_current(executable: &Path, link: &LinkedComposition, path: &str) -> Result<bool, String> {
     Ok(matches_cache(Path::new(path), link, &source_version(link)?, executable))
+}
+
+#[cfg(test)]
+mod live_handoff_tests {
+    use super::*;
+    use std::io::{BufRead, BufReader, Write};
+    use std::net::TcpListener;
+    use std::sync::{Arc, Mutex};
+
+    /// A stand-in EffectCraft control channel: answers `engine.execute` for one connection at a
+    /// time and records the commands it ran.
+    fn fake_effectcraft(project: Option<PathBuf>, import: Value) -> (u16, Arc<Mutex<Vec<Value>>>) {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let seen = Arc::new(Mutex::new(Vec::new()));
+        let log = seen.clone();
+        std::thread::spawn(move || {
+            for stream in listener.incoming() {
+                let Ok(stream) = stream else { return };
+                let mut writer = stream.try_clone().unwrap();
+                for line in BufReader::new(stream).lines() {
+                    let Ok(line) = line else { break };
+                    let request: Value = serde_json::from_str(&line).unwrap();
+                    let params = &request["params"];
+                    let command = params["command"].as_str().unwrap_or_default().to_string();
+                    if command == "file.importTimeline" {
+                        // the selection file exists while EffectCraft reads it
+                        assert!(Path::new(params["params"]["path"].as_str().unwrap()).is_file());
+                    }
+                    log.lock().unwrap().push(params.clone());
+                    let result = match command.as_str() {
+                        "project.summary" => serde_json::json!({"path": project, "revision": 7}),
+                        "file.importTimeline" => import.clone(),
+                        "file.save" => {
+                            let path = project.clone().unwrap();
+                            std::fs::write(path, r#"{"schema":2,"items":{"42":{"kind":{"type":"Comp"}}}}"#).unwrap();
+                            Value::Null
+                        }
+                        _ => Value::Null,
+                    };
+                    let reply = serde_json::json!({"id": request["id"], "ok": true, "result": result});
+                    writeln!(writer, "{reply}").unwrap();
+                }
+            }
+        });
+        (port, seen)
+    }
+
+    struct TempDir(PathBuf);
+    impl TempDir {
+        fn new(name: &str) -> Self {
+            let dir = std::env::temp_dir().join(format!("filmcraft-live-handoff-{name}-{}", std::process::id()));
+            let _ = std::fs::remove_dir_all(&dir);
+            std::fs::create_dir_all(&dir).unwrap();
+            Self(dir)
+        }
+        fn path(&self) -> &Path {
+            &self.0
+        }
+    }
+    impl Drop for TempDir {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
+
+    fn commands(seen: &Mutex<Vec<Value>>) -> Vec<String> {
+        seen.lock().unwrap().iter().map(|p| p["command"].as_str().unwrap().to_string()).collect()
+    }
+
+    fn good_import() -> Value {
+        serde_json::json!({"supportsSourceTimeKeys": true, "warnings": [], "missing": [], "comps": [42]})
+    }
+
+    #[test]
+    fn replacement_lands_as_a_new_comp_in_the_open_saved_project() {
+        let dir = TempDir::new("ok");
+        let project = dir.path().join("Open.ecproj");
+        let (port, seen) = fake_effectcraft(Some(project.clone()), good_import());
+        assert_eq!(open_effectcraft_project(port).as_deref(), project.to_str());
+        let link = import_timeline_live(port, b"{}", &AtomicBool::new(false)).unwrap();
+        assert_eq!(link, LinkedComposition { project_path: project.to_string_lossy().into_owned(), composition_id: 42, baked: false });
+        assert_eq!(commands(&seen), ["project.summary", "project.summary", "file.importTimeline", "file.save"]);
+        assert!(!dir.path().join(".filmcraft-handoff").read_dir().unwrap().any(|e| e.unwrap().path().join("selection.otio").exists()));
+    }
+
+    #[test]
+    fn a_refused_import_is_undone_and_never_saved() {
+        let dir = TempDir::new("refused");
+        let project = dir.path().join("Open.ecproj");
+        let import = serde_json::json!({"supportsSourceTimeKeys": true, "warnings": ["unsupported transition"], "missing": [], "comps": [42]});
+        let (port, seen) = fake_effectcraft(Some(project.clone()), import);
+        let error = import_timeline_live(port, b"{}", &AtomicBool::new(false)).unwrap_err();
+        assert!(error.contains("unsupported transition"), "{error}");
+        assert_eq!(commands(&seen), ["project.summary", "file.importTimeline", "project.summary", "edit.undo"]);
+        assert_eq!(seen.lock().unwrap().last().unwrap()["params"]["expectRevision"], 7);
+        assert!(!project.exists());
+    }
+
+    #[test]
+    fn no_running_effectcraft_or_an_unsaved_project_falls_back_to_a_new_file() {
+        let (port, _) = fake_effectcraft(None, good_import());
+        assert_eq!(open_effectcraft_project(port), None);
+        assert!(import_timeline_live(port, b"{}", &AtomicBool::new(false)).unwrap_err().contains("never been saved"));
+        let closed = TcpListener::bind("127.0.0.1:0").unwrap().local_addr().unwrap().port();
+        assert_eq!(open_effectcraft_project(closed), None);
+    }
 }

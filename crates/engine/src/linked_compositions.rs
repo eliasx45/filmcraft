@@ -28,6 +28,9 @@ struct Request {
     previous: Option<String>,
     bake: bool,
     replacement: Option<Arc<crate::linked_handoff::Plan>>,
+    /// A replacement into the project open in the running EffectCraft (its control port) rather
+    /// than a new project file.
+    live: Option<u16>,
 }
 
 struct Completed {
@@ -294,6 +297,7 @@ pub fn poll(s: &mut Session) {
             previous: Some(path.clone()),
             bake: s.links.bakes.contains(id),
             replacement: None,
+            live: None,
         });
     }
     if requests.is_empty() {
@@ -318,7 +322,9 @@ pub fn poll(s: &mut Session) {
             }
             let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                 let executable = executable.as_ref().map_err(Clone::clone)?;
-                let link = if let Some(plan) = &request.replacement {
+                let link = if let (Some(plan), Some(port)) = (&request.replacement, request.live) {
+                    crate::linked_render::import_timeline_live(port, &plan.interchange()?, &worker_cancel)?
+                } else if let Some(plan) = &request.replacement {
                     crate::linked_render::import_timeline(executable, &plan.interchange()?, std::path::Path::new(&request.link.project_path), &worker_cancel)?
                 } else {
                     request.link.clone()
@@ -395,7 +401,7 @@ pub fn commands() -> Vec<CommandSpec> {
             }
             let ticket = s.links.next_ticket;
             s.links.next_ticket = ticket.checked_add(1).ok_or_else(|| EngineError::Other("link request ids exhausted".into()))?;
-            s.links.imports.push(Request { ticket, item: None, link, previous: None, bake: false, replacement: None });
+            s.links.imports.push(Request { ticket, item: None, link, previous: None, bake: false, replacement: None, live: None });
             s.links.next_scan = Instant::now();
             poll(s);
             if p.get("wait").and_then(Value::as_bool).unwrap_or(false) {
@@ -418,9 +424,23 @@ pub fn commands() -> Vec<CommandSpec> {
             }
             Ok(json!({"request":ticket}))
         }),
-        spec("link.replace", "Replace with EffectCraft Composition…", &["Clip", "EffectCraft"], r#"{"path":str}"#, |s, p| {
-            let path = str_p(p, "path").ok_or_else(|| bad("link.replace", "choose a new .ecproj destination"))?;
-            if !std::path::Path::new(path).is_absolute() || !path.to_ascii_lowercase().ends_with(".ecproj") {
+        spec("link.replace", "Replace with EffectCraft Composition…", &["Clip", "EffectCraft"], r#"{"path":str?,"open":bool=false,"port":u32?}"#, |s, p| {
+            // `open`: a new composition in the project open in the running EffectCraft (as Premiere
+            // with After Effects); else a new project at `path`.
+            let live = if p.get("open").and_then(Value::as_bool).unwrap_or(false) {
+                let port = match p.get("port") {
+                    None | Some(Value::Null) => crate::linked_render::effectcraft_control_port(),
+                    Some(v) => v.as_u64().and_then(|n| u16::try_from(n).ok()).filter(|n| *n != 0).ok_or_else(|| bad("link.replace", "port must be 1-65535"))?,
+                };
+                Some(port)
+            } else {
+                None
+            };
+            let path = match live {
+                Some(_) => "",
+                None => str_p(p, "path").ok_or_else(|| bad("link.replace", "choose a new .ecproj destination"))?,
+            };
+            if live.is_none() && (!std::path::Path::new(path).is_absolute() || !path.to_ascii_lowercase().ends_with(".ecproj")) {
                 return Err(bad("link.replace", "destination must be an absolute .ecproj path"));
             }
             if s.project.linked_compositions.values().filter(|link| !link.baked).count().saturating_add(s.links.imports.len()) >= 256 {
@@ -439,6 +459,7 @@ pub fn commands() -> Vec<CommandSpec> {
                 previous: None,
                 bake: false,
                 replacement: Some(plan),
+                live,
             });
             s.links.next_scan = Instant::now();
             poll(s);
@@ -582,7 +603,7 @@ mod tests {
         Arc::make_mut(&mut session.project).next_id = u64::MAX;
         let before = session.project.clone();
         let link = LinkedComposition { project_path: "/fixture.ecproj".into(), composition_id: 1, baked: false };
-        let request = Request { ticket: 1, item: None, link: link.clone(), previous: None, bake: false, replacement: None };
+        let request = Request { ticket: 1, item: None, link: link.clone(), previous: None, bake: false, replacement: None, live: None };
         let source = Arc::new(filmcraft_media::generators::GeneratorSource::new(
             filmcraft_media::Generator::ColorMatte { color: [1.0, 0.0, 0.0, 1.0] },
             64,
@@ -610,7 +631,8 @@ mod tests {
         let project = Arc::make_mut(&mut session.project);
         project.item_mut(id).unwrap().as_media_mut().unwrap().media = MediaRef::File { path: "/last-good.mov".into() };
         project.linked_compositions.insert(id, link.clone());
-        let request = Request { ticket: 0, item: Some(id), link: link.clone(), previous: Some("/last-good.mov".into()), bake: false, replacement: None };
+        let request =
+            Request { ticket: 0, item: Some(id), link: link.clone(), previous: Some("/last-good.mov".into()), bake: false, replacement: None, live: None };
         let (sender, receiver) = mpsc::channel();
         let cancel = Arc::new(AtomicBool::new(false));
         session.links.worker = Some(Worker { cancel: cancel.clone(), receiver, requests: vec![request.clone()] });

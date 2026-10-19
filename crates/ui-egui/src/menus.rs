@@ -596,8 +596,16 @@ pub fn invoke(app: &mut FilmcraftApp, ctx: &egui::Context, id: &str, mut params:
         return Ok(Value::Null);
     }
     #[cfg(not(target_arch = "wasm32"))]
-    if id == "link.replace" && params.get("path").is_none() {
+    if id == "link.replace" && params.get("path").is_none() && params.get("open").is_none() {
         filmcraft_engine::linked_handoff::Plan::prepare(&app.session).map_err(|e| e.to_string())?;
+        // As Premiere does with After Effects: a new composition in the project open in
+        // EffectCraft when it has a saved one, else a new project file.
+        let port = filmcraft_engine::linked_render::effectcraft_control_port();
+        if filmcraft_engine::linked_render::open_effectcraft_project(port).is_some() {
+            let result = app.session.execute("link.replace", json!({"open": true, "port": port})).map_err(|e| e.to_string())?;
+            crate::composition_links::open_manager(ctx);
+            return Ok(result);
+        }
         let ctx = ctx.clone();
         return app.pick(
             crate::native_dialogs::FileDialog::save_as(tl!("EffectCraft Project"), &["ecproj"], "Linked Composition.ecproj"),

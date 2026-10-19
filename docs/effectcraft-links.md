@@ -15,8 +15,12 @@ FilmCraft video clips → editable EffectCraft project → rendered cache → sa
    compositions and select one by name. The renderer setup section accepts an absolute path to
    a compatible `effectcraft-cli`; FilmCraft remembers it in its own preferences.
 2. Or select video clips and choose **Clip ▸ EffectCraft ▸ Replace with EffectCraft Composition…**.
-   Choose a **new** `.ecproj` filename. The original clips stay in place until the editable project
-   and its first render are ready. One Undo restores them. Original audio stays in FilmCraft.
+   As Premiere does with After Effects, when EffectCraft is running with a saved project open (its
+   control channel, `EFFECTCRAFT_CONTROL_PORT` or 9877), the selection becomes a new composition in
+   that project and EffectCraft saves it; nothing asks for a file. Otherwise choose a **new**
+   `.ecproj` filename. The original clips stay in place until the composition and its first render
+   are ready. One Undo restores them. Original audio stays in FilmCraft. An import EffectCraft
+   refuses is undone there.
 3. **Window ▸ EffectCraft Links** shows status, opens the source, relinks a moved project, and
    provides Bake / Restore, Refresh and Cancel controls.
 4. Edit the source in EffectCraft and save. FilmCraft scans in the background, renders changed
@@ -91,6 +95,7 @@ project supplied by another person.
 {"command":"link.configure","params":{"executable":"/absolute/path/effectcraft-cli"}}
 {"command":"link.import","params":{"path":"/absolute/path/titles.ecproj","composition":7,"wait":true}}
 {"command":"link.replace","params":{"path":"/absolute/path/new-composition.ecproj"}}
+{"command":"link.replace","params":{"open":true,"port":9877}}
 {"command":"link.status","params":{}}
 {"command":"link.relink","params":{"item":12,"path":"/absolute/path/moved.ecproj","composition":7}}
 {"command":"link.bake","params":{"item":12}}
