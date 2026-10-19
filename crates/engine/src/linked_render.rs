@@ -512,7 +512,7 @@ pub fn import_timeline(executable: &Path, bytes: &[u8], destination: &Path, canc
         // Match FilmCraft's linear-light layer blending without reinterpreting decoded footage.
         // Only this new empty handoff project changes; existing projects keep their look.
         command
-            .args(["run", "file.projectSettings", r#"{"blendLinear":true,"bitDepth":32}"#, "file.importTimeline"])
+            .args(["run", "file.projectSettings", r#"{"blendLinear":true,"bitDepth":8}"#, "file.importTimeline"])
             .arg(params)
             .args(["--empty", "--save-as"])
             .arg(&project)

@@ -35,7 +35,7 @@ identity is its numeric item ID inside the referenced project, not its display n
 - The visual handoff uses the existing OpenTimelineIO conversion, retaining editable layers and
   source media. FilmCraft tags its source-time keyframes; compatible EffectCraft importers preserve
   their timing through trims and speed changes while retaining legacy import behavior.
-- Newly created handoff projects use 32-bit color and linear-light layer blending. Existing EffectCraft projects keep
+- Newly created handoff projects use 8-bit color and linear-light layer blending. Existing EffectCraft projects keep
   their authored color settings.
 - Generated movies are full-resolution ProRes 4444 with alpha and no audio. The worker bypasses
   saved Movie Default templates, so draft frame rates, crop/resize presets and proxies cannot reduce
