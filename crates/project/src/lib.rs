@@ -761,6 +761,9 @@ pub struct Track {
     /// Audio Track Mixer state: automation mode and lanes, sends, output, record arm.
     #[serde(default)]
     pub mixer: MixerStrip,
+    /// Colour label tinting the track's header and lane background (`None` = no colour).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub label: Option<Label>,
 }
 
 impl Track {
@@ -781,6 +784,7 @@ impl Track {
             pan: 0.0,
             effects: Vec::new(),
             mixer: MixerStrip::default(),
+            label: None,
         }
     }
     pub fn end(&self) -> Tick {

@@ -1263,6 +1263,7 @@
 	59.94 fps Non Drop-Frame	59,94 fps non drop-frame
 	ASC CDL	ASC CDL
 	Accessible color contrast	Contrasto dei colori accessibile
+	Animate zoom, scrolling and menus	Anima zoom, scorrimento e menu
 	Action-Safe Margin	Margine di sicurezza azione
 	Active Monitor	Monitor attivo
 	Add	Aggiungi
@@ -3612,3 +3613,9 @@
 	Restore EffectCraft Link	Ripristina collegamento EffectCraft
 	Refresh EffectCraft Links	Aggiorna collegamenti EffectCraft
 	Cancel EffectCraft Updates	Annulla aggiornamenti EffectCraft
+# View ▸ Reset Interface Zoom (#2253).
+	Reset Interface Zoom	Reimposta zoom dell'interfaccia
+	Track Color	Colore traccia
+	Open a sequence to search its graphics	Apri una sequenza per cercare nelle sue grafiche
+	No text graphics in this sequence. Add text with the Type tool.	Nessuna grafica con testo in questa sequenza. Aggiungi testo con lo strumento Testo.
+	No matching text.	Nessun testo corrispondente.
